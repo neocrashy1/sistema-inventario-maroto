@@ -1,0 +1,1482 @@
+<template>
+  <div class="third-parties">
+    <!-- Cabeçalho -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-text">
+          <h1 class="page-title">Terceiros</h1>
+          <p class="page-subtitle">Gerencie empresas e pessoas externas para empréstimos de ativos</p>
+        </div>
+        <div class="header-actions">
+          <button 
+            class="btn btn-outline"
+            @click="exportThirdParties"
+            :disabled="loading"
+          >
+            <i class="fas fa-download"></i>
+            Exportar
+          </button>
+          <button 
+            class="btn btn-primary"
+            @click="showNewThirdPartyModal = true"
+          >
+            <i class="fas fa-plus"></i>
+            Novo Terceiro
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards de Estatísticas -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-handshake"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ thirdPartiesStore.totalThirdParties }}</div>
+          <div class="stat-label">Total de Terceiros</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon active">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ thirdPartiesStore.activeThirdParties.length }}</div>
+          <div class="stat-label">Ativos</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon warning">
+          <i class="fas fa-pause-circle"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ thirdPartiesStore.inactiveThirdParties.length }}</div>
+          <div class="stat-label">Inativos</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon info">
+          <i class="fas fa-building"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ thirdPartiesStore.companies.length }}</div>
+          <div class="stat-label">Empresas</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-section">
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label>Buscar</label>
+          <div class="search-input">
+            <i class="fas fa-search"></i>
+            <input 
+              type="text" 
+              placeholder="Nome, email, documento ou contato..."
+              v-model="searchQuery"
+              @input="handleSearch"
+            >
+          </div>
+        </div>
+        
+        <div class="filter-group">
+          <label>Tipo</label>
+          <select v-model="selectedType" @change="handleTypeFilter">
+            <option value="">Todos os tipos</option>
+            <option value="company">Empresa</option>
+            <option value="person">Pessoa Física</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>Status</label>
+          <select v-model="selectedStatus" @change="handleStatusFilter">
+            <option value="">Todos os status</option>
+            <option value="active">Ativo</option>
+            <option value="inactive">Inativo</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>Categoria</label>
+          <select v-model="selectedCategory" @change="handleCategoryFilter">
+            <option value="">Todas as categorias</option>
+            <option v-for="category in thirdPartiesStore.availableCategories" :key="category" :value="category">
+              {{ category }}
+            </option>
+          </select>
+        </div>
+        
+        <div class="filter-actions">
+          <button class="btn btn-outline btn-sm" @click="clearFilters">
+            <i class="fas fa-times"></i>
+            Limpar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de Terceiros -->
+    <div class="content-section">
+      <div class="section-header">
+        <h2>Terceiros Cadastrados</h2>
+        <div class="view-options">
+          <button 
+            class="view-btn" 
+            :class="{ active: viewMode === 'grid' }"
+            @click="viewMode = 'grid'"
+          >
+            <i class="fas fa-th-large"></i>
+          </button>
+          <button 
+            class="view-btn" 
+            :class="{ active: viewMode === 'table' }"
+            @click="viewMode = 'table'"
+          >
+            <i class="fas fa-list"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="loading" class="loading-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>Carregando terceiros...</span>
+      </div>
+
+      <!-- Grid View -->
+      <div v-else-if="viewMode === 'grid'" class="third-parties-grid">
+        <div 
+          v-for="thirdParty in filteredThirdParties" 
+          :key="thirdParty.id" 
+          class="third-party-card"
+          :class="{ inactive: thirdParty.status === 'inactive' }"
+        >
+          <div class="card-header">
+            <div class="third-party-info">
+              <div class="third-party-avatar">
+                <i :class="thirdParty.type === 'company' ? 'fas fa-building' : 'fas fa-user'"></i>
+              </div>
+              <div class="third-party-details">
+                <h3 class="third-party-name">{{ thirdParty.name }}</h3>
+                <p class="third-party-type">{{ thirdParty.type === 'company' ? 'Empresa' : 'Pessoa Física' }}</p>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button 
+                class="action-btn" 
+                @click="viewThirdParty(thirdParty)"
+                title="Ver detalhes"
+              >
+                <i class="fas fa-eye"></i>
+              </button>
+              <button 
+                class="action-btn" 
+                @click="editThirdParty(thirdParty)"
+                title="Editar"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              <button 
+                class="action-btn" 
+                :class="{ danger: thirdParty.status === 'active' }"
+                @click="toggleThirdPartyStatus(thirdParty)"
+                :title="thirdParty.status === 'active' ? 'Desativar' : 'Reativar'"
+              >
+                <i :class="thirdParty.status === 'active' ? 'fas fa-pause' : 'fas fa-play'"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="card-content">
+            <div class="info-row">
+              <span class="label">Documento:</span>
+              <span class="value">{{ thirdParty.document }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Email:</span>
+              <span class="value">{{ thirdParty.email }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Contato:</span>
+              <span class="value">{{ thirdParty.contact }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Categoria:</span>
+              <span class="value">{{ thirdParty.category }}</span>
+            </div>
+          </div>
+          
+          <div class="card-footer">
+            <span class="status-badge" :class="thirdParty.status">
+              {{ thirdParty.status === 'active' ? 'Ativo' : 'Inativo' }}
+            </span>
+            <span class="date">{{ formatDate(thirdParty.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <div v-else class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Documento</th>
+              <th>Email</th>
+              <th>Contato</th>
+              <th>Categoria</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="thirdParty in filteredThirdParties" 
+              :key="thirdParty.id"
+              :class="{ inactive: thirdParty.status === 'inactive' }"
+            >
+              <td>
+                <div class="table-cell-content">
+                  <i :class="thirdParty.type === 'company' ? 'fas fa-building' : 'fas fa-user'"></i>
+                  {{ thirdParty.name }}
+                </div>
+              </td>
+              <td>{{ thirdParty.type === 'company' ? 'Empresa' : 'Pessoa Física' }}</td>
+              <td>{{ thirdParty.document }}</td>
+              <td>{{ thirdParty.email }}</td>
+              <td>{{ thirdParty.contact }}</td>
+              <td>{{ thirdParty.category }}</td>
+              <td>
+                <span class="status-badge" :class="thirdParty.status">
+                  {{ thirdParty.status === 'active' ? 'Ativo' : 'Inativo' }}
+                </span>
+              </td>
+              <td>
+                <div class="table-actions">
+                  <button 
+                    class="action-btn" 
+                    @click="viewThirdParty(thirdParty)"
+                    title="Ver detalhes"
+                  >
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button 
+                    class="action-btn" 
+                    @click="editThirdParty(thirdParty)"
+                    title="Editar"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button 
+                    class="action-btn" 
+                    :class="{ danger: thirdParty.status === 'active' }"
+                    @click="toggleThirdPartyStatus(thirdParty)"
+                    :title="thirdParty.status === 'active' ? 'Desativar' : 'Reativar'"
+                  >
+                    <i :class="thirdParty.status === 'active' ? 'fas fa-pause' : 'fas fa-play'"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div v-if="!loading && filteredThirdParties.length === 0" class="empty-state">
+        <i class="fas fa-handshake"></i>
+        <h3>Nenhum terceiro encontrado</h3>
+        <p>{{ searchQuery ? 'Tente ajustar os filtros de busca' : 'Comece adicionando um novo terceiro' }}</p>
+        <button class="btn btn-primary" @click="showNewThirdPartyModal = true">
+          <i class="fas fa-plus"></i>
+          Adicionar Terceiro
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Novo Terceiro -->
+    <div v-if="showNewThirdPartyModal" class="modal-overlay" @click="closeNewThirdPartyModal">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h2>{{ editingThirdParty ? 'Editar Terceiro' : 'Novo Terceiro' }}</h2>
+          <button class="modal-close" @click="closeNewThirdPartyModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-content">
+          <form @submit.prevent="saveThirdParty">
+            <div class="form-grid">
+              <!-- Informações Básicas -->
+              <div class="form-section">
+                <h3>Informações Básicas</h3>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Tipo *</label>
+                    <select v-model="thirdPartyForm.type" required>
+                      <option value="">Selecione o tipo</option>
+                      <option value="company">Empresa</option>
+                      <option value="person">Pessoa Física</option>
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label>{{ thirdPartyForm.type === 'company' ? 'Razão Social' : 'Nome Completo' }} *</label>
+                    <input 
+                      type="text" 
+                      v-model="thirdPartyForm.name" 
+                      :placeholder="thirdPartyForm.type === 'company' ? 'Digite a razão social' : 'Digite o nome completo'"
+                      required 
+                    >
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>{{ thirdPartyForm.type === 'company' ? 'CNPJ' : 'CPF' }} *</label>
+                    <input 
+                      type="text" 
+                      v-model="thirdPartyForm.document" 
+                      :placeholder="thirdPartyForm.type === 'company' ? '00.000.000/0000-00' : '000.000.000-00'"
+                      required 
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label>Categoria *</label>
+                    <select v-model="thirdPartyForm.category" required>
+                      <option value="">Selecione a categoria</option>
+                      <option value="fornecedor">Fornecedor</option>
+                      <option value="prestador">Prestador de Serviços</option>
+                      <option value="consultor">Consultor</option>
+                      <option value="parceiro">Parceiro</option>
+                      <option value="cliente">Cliente</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Contato -->
+              <div class="form-section">
+                <h3>Contato</h3>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Email *</label>
+                    <input 
+                      type="email" 
+                      v-model="thirdPartyForm.email" 
+                      placeholder="email@exemplo.com"
+                      required 
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label>Telefone *</label>
+                    <input 
+                      type="tel" 
+                      v-model="thirdPartyForm.phone" 
+                      placeholder="(11) 99999-9999"
+                      required 
+                    >
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Pessoa de Contato *</label>
+                    <input 
+                      type="text" 
+                      v-model="thirdPartyForm.contact" 
+                      placeholder="Nome da pessoa responsável"
+                      required 
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label>Telefone do Contato</label>
+                    <input 
+                      type="tel" 
+                      v-model="thirdPartyForm.contactPhone" 
+                      placeholder="(11) 99999-9999"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Endereço -->
+              <div class="form-section">
+                <h3>Endereço</h3>
+                
+                <div class="form-row">
+                  <div class="form-group full-width">
+                    <label>Logradouro</label>
+                    <input 
+                      type="text" 
+                      v-model="thirdPartyForm.address.street" 
+                      placeholder="Rua, Avenida, etc."
+                    >
+                  </div>
+                </div>
+                
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Cidade</label>
+                    <input 
+                      type="text" 
+                      v-model="thirdPartyForm.address.city" 
+                      placeholder="Cidade"
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label>Estado</label>
+                    <select v-model="thirdPartyForm.address.state">
+                      <option value="">Selecione</option>
+                      <option value="SP">São Paulo</option>
+                      <option value="RJ">Rio de Janeiro</option>
+                      <option value="MG">Minas Gerais</option>
+                      <!-- Adicionar outros estados conforme necessário -->
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label>CEP</label>
+                    <input 
+                      type="text" 
+                      v-model="thirdPartyForm.address.zipCode" 
+                      placeholder="00000-000"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Observações -->
+              <div class="form-section">
+                <h3>Observações</h3>
+                
+                <div class="form-group">
+                  <label>Notas</label>
+                  <textarea 
+                    v-model="thirdPartyForm.notes" 
+                    placeholder="Informações adicionais sobre o terceiro..."
+                    rows="3"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" @click="closeNewThirdPartyModal">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" @click="saveThirdParty">
+            {{ editingThirdParty ? 'Atualizar' : 'Salvar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Detalhes do Terceiro -->
+    <div v-if="showThirdPartyDetailsModal" class="modal-overlay" @click="closeThirdPartyDetailsModal">
+      <div class="modal modal-large" @click.stop>
+        <div class="modal-header">
+          <h2>Detalhes do Terceiro</h2>
+          <button class="modal-close" @click="closeThirdPartyDetailsModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-content" v-if="selectedThirdParty">
+          <div class="details-grid">
+            <!-- Informações Básicas -->
+            <div class="details-section">
+              <h3>Informações Básicas</h3>
+              <div class="details-content">
+                <div class="detail-item">
+                  <span class="label">Nome:</span>
+                  <span class="value">{{ selectedThirdParty.name }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Tipo:</span>
+                  <span class="value">{{ selectedThirdParty.type === 'company' ? 'Empresa' : 'Pessoa Física' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Documento:</span>
+                  <span class="value">{{ selectedThirdParty.document }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Categoria:</span>
+                  <span class="value">{{ selectedThirdParty.category }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Status:</span>
+                  <span class="status-badge" :class="selectedThirdParty.status">
+                    {{ selectedThirdParty.status === 'active' ? 'Ativo' : 'Inativo' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Contato -->
+            <div class="details-section">
+              <h3>Contato</h3>
+              <div class="details-content">
+                <div class="detail-item">
+                  <span class="label">Email:</span>
+                  <span class="value">{{ selectedThirdParty.email }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Telefone:</span>
+                  <span class="value">{{ selectedThirdParty.phone }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Pessoa de Contato:</span>
+                  <span class="value">{{ selectedThirdParty.contact }}</span>
+                </div>
+                <div class="detail-item" v-if="selectedThirdParty.contactPhone">
+                  <span class="label">Telefone do Contato:</span>
+                  <span class="value">{{ selectedThirdParty.contactPhone }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Endereço -->
+            <div class="details-section" v-if="selectedThirdParty.address">
+              <h3>Endereço</h3>
+              <div class="details-content">
+                <div class="detail-item" v-if="selectedThirdParty.address.street">
+                  <span class="label">Logradouro:</span>
+                  <span class="value">{{ selectedThirdParty.address.street }}</span>
+                </div>
+                <div class="detail-item" v-if="selectedThirdParty.address.city">
+                  <span class="label">Cidade:</span>
+                  <span class="value">{{ selectedThirdParty.address.city }}</span>
+                </div>
+                <div class="detail-item" v-if="selectedThirdParty.address.state">
+                  <span class="label">Estado:</span>
+                  <span class="value">{{ selectedThirdParty.address.state }}</span>
+                </div>
+                <div class="detail-item" v-if="selectedThirdParty.address.zipCode">
+                  <span class="label">CEP:</span>
+                  <span class="value">{{ selectedThirdParty.address.zipCode }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Observações -->
+            <div class="details-section" v-if="selectedThirdParty.notes">
+              <h3>Observações</h3>
+              <div class="details-content">
+                <p>{{ selectedThirdParty.notes }}</p>
+              </div>
+            </div>
+
+            <!-- Datas -->
+            <div class="details-section">
+              <h3>Informações do Sistema</h3>
+              <div class="details-content">
+                <div class="detail-item">
+                  <span class="label">Data de Cadastro:</span>
+                  <span class="value">{{ formatDate(selectedThirdParty.createdAt) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Última Atualização:</span>
+                  <span class="value">{{ formatDate(selectedThirdParty.updatedAt) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" @click="closeThirdPartyDetailsModal">
+            Fechar
+          </button>
+          <button type="button" class="btn btn-primary" @click="editThirdParty(selectedThirdParty)">
+            <i class="fas fa-edit"></i>
+            Editar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { ref, computed, onMounted } from 'vue'
+import { useThirdPartiesStore } from '@/stores/thirdParties'
+
+export default {
+  name: 'ThirdParties',
+  setup() {
+    const thirdPartiesStore = useThirdPartiesStore()
+    
+    // Estado reativo
+    const loading = ref(false)
+    const viewMode = ref('grid')
+    const searchQuery = ref('')
+    const selectedType = ref('')
+    const selectedStatus = ref('')
+    const selectedCategory = ref('')
+    
+    // Modais
+    const showNewThirdPartyModal = ref(false)
+    const showThirdPartyDetailsModal = ref(false)
+    const editingThirdParty = ref(null)
+    const selectedThirdParty = ref(null)
+    
+    // Formulário
+    const thirdPartyForm = ref({
+      name: '',
+      type: '',
+      document: '',
+      email: '',
+      phone: '',
+      contact: '',
+      contactPhone: '',
+      address: {
+        street: '',
+        city: '',
+        state: '',
+        zipCode: ''
+      },
+      status: 'active',
+      category: '',
+      notes: ''
+    })
+
+    // Computed
+    const filteredThirdParties = computed(() => thirdPartiesStore.filteredThirdParties)
+
+    // Métodos
+    const handleSearch = () => {
+      thirdPartiesStore.setSearchFilter(searchQuery.value)
+    }
+
+    const handleTypeFilter = () => {
+      thirdPartiesStore.setTypeFilter(selectedType.value)
+    }
+
+    const handleStatusFilter = () => {
+      thirdPartiesStore.setStatusFilter(selectedStatus.value)
+    }
+
+    const handleCategoryFilter = () => {
+      thirdPartiesStore.setCategoryFilter(selectedCategory.value)
+    }
+
+    const clearFilters = () => {
+      searchQuery.value = ''
+      selectedType.value = ''
+      selectedStatus.value = ''
+      selectedCategory.value = ''
+      thirdPartiesStore.clearFilters()
+    }
+
+    const resetForm = () => {
+      thirdPartyForm.value = {
+        name: '',
+        type: '',
+        document: '',
+        email: '',
+        phone: '',
+        contact: '',
+        contactPhone: '',
+        address: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: ''
+        },
+        status: 'active',
+        category: '',
+        notes: ''
+      }
+    }
+
+    const closeNewThirdPartyModal = () => {
+      showNewThirdPartyModal.value = false
+      editingThirdParty.value = null
+      resetForm()
+    }
+
+    const closeThirdPartyDetailsModal = () => {
+      showThirdPartyDetailsModal.value = false
+      selectedThirdParty.value = null
+    }
+
+    const saveThirdParty = () => {
+      if (editingThirdParty.value) {
+        thirdPartiesStore.updateThirdParty(editingThirdParty.value.id, thirdPartyForm.value)
+      } else {
+        thirdPartiesStore.addThirdParty(thirdPartyForm.value)
+      }
+      closeNewThirdPartyModal()
+    }
+
+    const viewThirdParty = (thirdParty) => {
+      selectedThirdParty.value = thirdParty
+      showThirdPartyDetailsModal.value = true
+    }
+
+    const editThirdParty = (thirdParty) => {
+      editingThirdParty.value = thirdParty
+      thirdPartyForm.value = { ...thirdParty }
+      showNewThirdPartyModal.value = true
+      showThirdPartyDetailsModal.value = false
+    }
+
+    const toggleThirdPartyStatus = (thirdParty) => {
+      thirdPartiesStore.toggleThirdPartyStatus(thirdParty.id)
+    }
+
+    const exportThirdParties = () => {
+      const data = thirdPartiesStore.exportThirdParties()
+      // Implementar lógica de exportação (CSV, Excel, etc.)
+      console.log('Exportando terceiros:', data)
+    }
+
+    const formatDate = (dateString) => {
+      return new Date(dateString).toLocaleDateString('pt-BR')
+    }
+
+    // Lifecycle
+    onMounted(() => {
+      // Carregar dados se necessário
+    })
+
+    return {
+      // Store
+      thirdPartiesStore,
+      
+      // Estado
+      loading,
+      viewMode,
+      searchQuery,
+      selectedType,
+      selectedStatus,
+      selectedCategory,
+      
+      // Modais
+      showNewThirdPartyModal,
+      showThirdPartyDetailsModal,
+      editingThirdParty,
+      selectedThirdParty,
+      
+      // Formulário
+      thirdPartyForm,
+      
+      // Computed
+      filteredThirdParties,
+      
+      // Métodos
+      handleSearch,
+      handleTypeFilter,
+      handleStatusFilter,
+      handleCategoryFilter,
+      clearFilters,
+      closeNewThirdPartyModal,
+      closeThirdPartyDetailsModal,
+      saveThirdParty,
+      viewThirdParty,
+      editThirdParty,
+      toggleThirdPartyStatus,
+      exportThirdParties,
+      formatDate
+    }
+  }
+}
+</script>
+
+<style scoped>
+.third-parties {
+  padding: 24px;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+/* Cabeçalho */
+.page-header {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-text h1 {
+  margin: 0 0 8px 0;
+  color: #1a202c;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.header-text p {
+  margin: 0;
+  color: #64748b;
+  font-size: 16px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Cards de Estatísticas */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 20px;
+}
+
+.stat-icon.active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.stat-icon.warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.stat-icon.info {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a202c;
+  line-height: 1;
+}
+
+.stat-label {
+  color: #64748b;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Filtros */
+.filters-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 20px;
+  align-items: end;
+}
+
+.filter-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #374151;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.search-input {
+  position: relative;
+}
+
+.search-input i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.search-input input {
+  padding-left: 40px;
+}
+
+/* Seção de Conteúdo */
+.content-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  margin: 0;
+  color: #1a202c;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.view-options {
+  display: flex;
+  gap: 8px;
+}
+
+.view-btn {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 8px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-btn:hover {
+  background: #f8fafc;
+}
+
+.view-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+/* Grid de Terceiros */
+.third-parties-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.third-party-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.third-party-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.third-party-card.inactive {
+  opacity: 0.7;
+  background: #f8fafc;
+}
+
+.card-header {
+  padding: 20px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.third-party-info {
+  display: flex;
+  gap: 12px;
+}
+
+.third-party-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 16px;
+}
+
+.third-party-name {
+  margin: 0 0 4px 0;
+  color: #1a202c;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.third-party-type {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card-content {
+  padding: 20px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-row .label {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.info-row .value {
+  color: #1a202c;
+  font-size: 14px;
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
+}
+
+.card-footer {
+  padding: 20px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.date {
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Tabela */
+.table-container {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  background: #f8fafc;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.data-table tr:hover {
+  background: #f8fafc;
+}
+
+.data-table tr.inactive {
+  opacity: 0.7;
+  background: #f8fafc;
+}
+
+.table-cell-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Status Badge */
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.status-badge.inactive {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Botões de Ação */
+.action-btn {
+  padding: 8px;
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.action-btn:hover {
+  background: #e2e8f0;
+  color: #374151;
+}
+
+.action-btn.danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Estados */
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+}
+
+.loading-state i {
+  font-size: 32px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+}
+
+.empty-state i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: #cbd5e1;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  color: #374151;
+  font-size: 18px;
+}
+
+.empty-state p {
+  margin: 0 0 24px 0;
+  font-size: 14px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-large {
+  max-width: 1000px;
+}
+
+.modal-header {
+  padding: 24px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #1a202c;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-close {
+  padding: 8px;
+  border: none;
+  background: none;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #f1f5f9;
+  color: #374151;
+}
+
+.modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 24px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Formulário */
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.form-section h3 {
+  margin: 0 0 20px 0;
+  color: #1a202c;
+  font-size: 16px;
+  font-weight: 600;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  margin-bottom: 8px;
+  color: #374151;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Detalhes */
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 32px;
+}
+
+.details-section h3 {
+  margin: 0 0 16px 0;
+  color: #1a202c;
+  font-size: 16px;
+  font-weight: 600;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.detail-item .label {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 120px;
+}
+
+.detail-item .value {
+  color: #1a202c;
+  font-size: 14px;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* Botões */
+.btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-outline {
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-outline:hover {
+  background: #f9fafb;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 12px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .third-parties {
+    padding: 16px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    justify-content: center;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .third-parties-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal {
+    margin: 10px;
+    max-height: calc(100vh - 20px);
+  }
+}
+</style>

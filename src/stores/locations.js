@@ -1,0 +1,406 @@
+import logger from '@/utils/logger'
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useLocationsStore = defineStore('locations', () => {
+  // Estado
+  const locations = ref([
+    {
+      id: 1,
+      name: 'Prédio Principal',
+      code: 'PRED01',
+      type: 'Prédio',
+      status: 'Ativo',
+      capacity: 200,
+      assetsCount: 45,
+      responsible: 'João Silva',
+      description: 'Prédio principal da empresa',
+      address: 'Rua Principal, 123 - Centro',
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-15T10:00:00Z'
+    },
+    {
+      id: 2,
+      name: 'TI - Sala 101',
+      code: 'TI101',
+      type: 'Sala',
+      status: 'Ativo',
+      capacity: 15,
+      assetsCount: 12,
+      responsible: 'Maria Santos',
+      description: 'Sala do departamento de TI',
+      address: 'Prédio Principal - 1º Andar',
+      createdAt: '2024-01-15T10:30:00Z',
+      updatedAt: '2024-01-15T10:30:00Z'
+    },
+    {
+      id: 3,
+      name: 'TI - Sala 102',
+      code: 'TI102',
+      type: 'Sala',
+      status: 'Ativo',
+      capacity: 10,
+      assetsCount: 8,
+      responsible: 'Carlos Lima',
+      description: 'Sala de desenvolvimento',
+      address: 'Prédio Principal - 1º Andar',
+      createdAt: '2024-01-15T11:00:00Z',
+      updatedAt: '2024-01-15T11:00:00Z'
+    },
+    {
+      id: 4,
+      name: 'Administração',
+      code: 'ADM01',
+      type: 'Sala',
+      status: 'Ativo',
+      capacity: 20,
+      assetsCount: 15,
+      responsible: 'Ana Costa',
+      description: 'Departamento administrativo',
+      address: 'Prédio Principal - 2º Andar',
+      createdAt: '2024-01-15T11:30:00Z',
+      updatedAt: '2024-01-15T11:30:00Z'
+    },
+    {
+      id: 5,
+      name: 'Almoxarifado',
+      code: 'ALM01',
+      type: 'Sala',
+      status: 'Ativo',
+      capacity: 5,
+      assetsCount: 25,
+      responsible: 'Pedro Oliveira',
+      description: 'Depósito de materiais',
+      address: 'Prédio Principal - Térreo',
+      createdAt: '2024-01-15T12:00:00Z',
+      updatedAt: '2024-01-15T12:00:00Z'
+    },
+    {
+      id: 6,
+      name: 'Sala de Reuniões A',
+      code: 'REUN01',
+      type: 'Sala',
+      status: 'Ativo',
+      capacity: 12,
+      assetsCount: 3,
+      responsible: 'Fernanda Rocha',
+      description: 'Sala de reuniões com equipamentos audiovisuais',
+      address: 'Prédio Principal - 2º Andar',
+      createdAt: '2024-01-15T12:30:00Z',
+      updatedAt: '2024-01-15T12:30:00Z'
+    },
+    {
+      id: 7,
+      name: 'Recepção',
+      code: 'RECEP01',
+      type: 'Área Externa',
+      status: 'Ativo',
+      capacity: 30,
+      assetsCount: 5,
+      responsible: 'Luciana Mendes',
+      description: 'Área de recepção e atendimento',
+      address: 'Prédio Principal - Térreo',
+      createdAt: '2024-01-15T13:00:00Z',
+      updatedAt: '2024-01-15T13:00:00Z'
+    },
+    {
+      id: 8,
+      name: 'Laboratório',
+      code: 'LAB01',
+      type: 'Sala',
+      status: 'Manutenção',
+      capacity: 8,
+      assetsCount: 18,
+      responsible: 'Roberto Silva',
+      description: 'Laboratório de testes e desenvolvimento',
+      address: 'Prédio Principal - 3º Andar',
+      createdAt: '2024-01-15T13:30:00Z',
+      updatedAt: '2024-01-15T13:30:00Z'
+    }
+  ])
+
+  const loading = ref(false)
+  const error = ref(null)
+
+  // Getters
+  const totalLocations = computed(() => locations.value.length)
+  
+  const totalAssetsInLocations = computed(() => {
+    return locations.value.reduce((total, location) => total + location.assetsCount, 0)
+  })
+
+  const locationsByType = computed(() => {
+    const types = {}
+    locations.value.forEach(location => {
+      if (!types[location.type]) {
+        types[location.type] = 0
+      }
+      types[location.type]++
+    })
+    return types
+  })
+
+  const locationsByStatus = computed(() => {
+    const statuses = {}
+    locations.value.forEach(location => {
+      if (!statuses[location.status]) {
+        statuses[location.status] = 0
+      }
+      statuses[location.status]++
+    })
+    return statuses
+  })
+
+  const activeLocations = computed(() => {
+    return locations.value.filter(location => location.status === 'Ativo')
+  })
+
+  // Actions
+  const fetchLocations = async () => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Simular chamada à API
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Em uma aplicação real, aqui seria feita a chamada à API
+      // const response = await api.get('/locations')
+      // locations.value = response.data
+      
+      loading.value = false
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const createLocation = async (locationData) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Simular chamada à API
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const newLocation = {
+        ...locationData,
+        id: Date.now(),
+        assetsCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      locations.value.push(newLocation)
+      loading.value = false
+      
+      return newLocation
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const updateLocation = async (id, locationData) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Simular chamada à API
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const index = locations.value.findIndex(location => location.id === id)
+      if (index === -1) {
+        throw new Error('Localização não encontrada')
+      }
+
+      const updatedLocation = {
+        ...locations.value[index],
+        ...locationData,
+        updatedAt: new Date().toISOString()
+      }
+
+      locations.value[index] = updatedLocation
+      loading.value = false
+      
+      return updatedLocation
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const deleteLocation = async (id) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Verificar se a localização tem ativos
+      const location = locations.value.find(l => l.id === id)
+      if (location && location.assetsCount > 0) {
+        throw new Error('Não é possível excluir uma localização que possui ativos')
+      }
+
+      // Simular chamada à API
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const index = locations.value.findIndex(location => location.id === id)
+      if (index === -1) {
+        throw new Error('Localização não encontrada')
+      }
+
+      locations.value.splice(index, 1)
+      loading.value = false
+      
+      return true
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const getLocationById = (id) => {
+    return locations.value.find(location => location.id === id)
+  }
+
+  const getLocationByCode = (code) => {
+    return locations.value.find(location => location.code === code)
+  }
+
+  const searchLocations = (query) => {
+    if (!query) return locations.value
+    
+    const searchTerm = query.toLowerCase()
+    return locations.value.filter(location =>
+      location.name.toLowerCase().includes(searchTerm) ||
+      location.code.toLowerCase().includes(searchTerm) ||
+      location.description.toLowerCase().includes(searchTerm) ||
+      location.responsible.toLowerCase().includes(searchTerm)
+    )
+  }
+
+  const filterLocationsByType = (type) => {
+    if (!type) return locations.value
+    return locations.value.filter(location => location.type === type)
+  }
+
+  const filterLocationsByStatus = (status) => {
+    if (!status) return locations.value
+    return locations.value.filter(location => location.status === status)
+  }
+
+  const updateAssetCount = (locationId, count) => {
+    const location = locations.value.find(l => l.id === locationId)
+    if (location) {
+      location.assetsCount = count
+      location.updatedAt = new Date().toISOString()
+    }
+  }
+
+  const incrementAssetCount = (locationId) => {
+    const location = locations.value.find(l => l.id === locationId)
+    if (location) {
+      location.assetsCount++
+      location.updatedAt = new Date().toISOString()
+    }
+  }
+
+  const decrementAssetCount = (locationId) => {
+    const location = locations.value.find(l => l.id === locationId)
+    if (location && location.assetsCount > 0) {
+      location.assetsCount--
+      location.updatedAt = new Date().toISOString()
+    }
+  }
+
+  const exportLocations = async (format = 'csv') => {
+    try {
+      // Simular exportação
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      if (format === 'csv') {
+        const csvContent = generateCSV()
+        downloadFile(csvContent, 'localizacoes.csv', 'text/csv')
+      } else if (format === 'excel') {
+        // Implementar exportação para Excel
+        logger.debug('Exportação para Excel não implementada ainda')
+      }
+      
+      return true
+    } catch (err) {
+      error.value = err.message
+      throw err
+    }
+  }
+
+  const generateCSV = () => {
+    const headers = ['ID', 'Nome', 'Código', 'Tipo', 'Status', 'Capacidade', 'Ativos', 'Responsável', 'Descrição', 'Endereço']
+    const rows = locations.value.map(location => [
+      location.id,
+      location.name,
+      location.code,
+      location.type,
+      location.status,
+      location.capacity,
+      location.assetsCount,
+      location.responsible,
+      location.description,
+      location.address
+    ])
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n')
+
+    return csvContent
+  }
+
+  const downloadFile = (content, filename, contentType) => {
+    const blob = new Blob([content], { type: contentType })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  }
+
+  const clearError = () => {
+    error.value = null
+  }
+
+  return {
+    // Estado
+    locations,
+    loading,
+    error,
+    
+    // Getters
+    totalLocations,
+    totalAssetsInLocations,
+    locationsByType,
+    locationsByStatus,
+    activeLocations,
+    
+    // Actions
+    fetchLocations,
+    createLocation,
+    updateLocation,
+    deleteLocation,
+    getLocationById,
+    getLocationByCode,
+    searchLocations,
+    filterLocationsByType,
+    filterLocationsByStatus,
+    updateAssetCount,
+    incrementAssetCount,
+    decrementAssetCount,
+    exportLocations,
+    clearError
+  }
+})

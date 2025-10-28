@@ -1,0 +1,243 @@
+import { computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
+
+export function useAuth() {
+  const router = useRouter()
+  const authStore = useAuthStore()
+  const { showToast } = useToast()
+
+  // Computed properties
+  const isAuthenticated = computed(() => authStore.isAuthenticated)
+  const user = computed(() => authStore.user)
+  const userRole = computed(() => authStore.userRole)
+  const permissions = computed(() => authStore.permissions)
+  const isLoading = computed(() => authStore.isLoading)
+  const isBlocked = computed(() => authStore.isBlocked)
+  const blockTimeRemaining = computed(() => authStore.blockTimeRemaining)
+
+  // Authentication methods
+  const login = async (credentials) => {
+    try {
+      const result = await authStore.login(credentials)
+      
+      if (result.success) {
+        showToast('Login realizado com sucesso!', 'success')
+        return { success: true }
+      } else {
+        showToast(result.error || 'Erro ao fazer login', 'error')
+        return { success: false, error: result.error }
+      }
+    } catch (error) {
+      const errorMessage = 'Erro interno do servidor'
+      showToast(errorMessage, 'error')
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  const register = async (userData) => {
+    try {
+      const result = await authStore.register(userData)
+      
+      if (result.success) {
+        showToast('Usuário registrado com sucesso!', 'success')
+        return { success: true }
+      } else {
+        showToast(result.error || 'Erro ao registrar usuário', 'error')
+        return { success: false, error: result.error }
+      }
+    } catch (error) {
+      const errorMessage = 'Erro interno do servidor'
+      showToast(errorMessage, 'error')
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  const logout = async () => {
+    try {
+      await authStore.logout()
+      showToast('Logout realizado com sucesso!', 'success')
+      // router.push('/auth/login') // Temporariamente desativado
+    } catch (error) {
+      showToast('Erro ao fazer logout', 'error')
+    }
+  }
+
+  const forgotPassword = async (email) => {
+    try {
+      const result = await authStore.forgotPassword(email)
+      
+      if (result.success) {
+        showToast('E-mail de recuperação enviado!', 'success')
+        return { success: true }
+      } else {
+        showToast(result.error || 'Erro ao enviar e-mail de recuperação', 'error')
+        return { success: false, error: result.error }
+      }
+    } catch (error) {
+      const errorMessage = 'Erro interno do servidor'
+      showToast(errorMessage, 'error')
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  const resetPassword = async (token, newPassword) => {
+    try {
+      const result = await authStore.resetPassword(token, newPassword)
+      
+      if (result.success) {
+        showToast('Senha redefinida com sucesso!', 'success')
+        return { success: true }
+      } else {
+        showToast(result.error || 'Erro ao redefinir senha', 'error')
+        return { success: false, error: result.error }
+      }
+    } catch (error) {
+      const errorMessage = 'Erro interno do servidor'
+      showToast(errorMessage, 'error')
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  const updateProfile = async (profileData) => {
+    try {
+      const result = await authStore.updateProfile(profileData)
+      
+      if (result.success) {
+        showToast('Perfil atualizado com sucesso!', 'success')
+        return { success: true }
+      } else {
+        showToast(result.error || 'Erro ao atualizar perfil', 'error')
+        return { success: false, error: result.error }
+      }
+    } catch (error) {
+      const errorMessage = 'Erro interno do servidor'
+      showToast(errorMessage, 'error')
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      const result = await authStore.changePassword(currentPassword, newPassword)
+      
+      if (result.success) {
+        showToast('Senha alterada com sucesso!', 'success')
+        return { success: true }
+      } else {
+        showToast(result.error || 'Erro ao alterar senha', 'error')
+        return { success: false, error: result.error }
+      }
+    } catch (error) {
+      const errorMessage = 'Erro interno do servidor'
+      showToast(errorMessage, 'error')
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  // Permission methods
+  const hasPermission = (permission) => {
+    return authStore.checkPermission(permission)
+  }
+
+  const hasRole = (role) => {
+    return authStore.hasRole(role)
+  }
+
+  const canAccessModule = (module) => {
+    return authStore.canAccessModule(module)
+  }
+
+  // Navigation guards
+  const requireAuth = () => {
+    // Temporário: sempre permitir acesso
+    // if (!isAuthenticated.value) {
+    //   router.push('/auth/login')
+    //   return false
+    // }
+    return true
+  }
+
+  const requireGuest = () => {
+    // Temporário: não bloquear
+    // if (isAuthenticated.value) {
+    //   router.push('/')
+    //   return false
+    // }
+    return true
+  }
+
+  const requireRole = (role) => {
+    if (!requireAuth()) return false
+    // Temporário: não bloquear por role
+    // if (!hasRole(role)) {
+    //   showToast('Acesso negado: permissão insuficiente', 'error')
+    //   router.push('/')
+    //   return false
+    // }
+    return true
+  }
+
+  const requirePermission = (permission) => {
+    if (!requireAuth()) return false
+    // Temporário: não bloquear por permissão
+    // if (!hasPermission(permission)) {
+    //   showToast('Acesso negado: permissão insuficiente', 'error')
+    //   router.push('/')
+    //   return false
+    // }
+    return true
+  }
+
+  // Initialize auth on app start
+  const initializeAuth = async () => {
+    try {
+      await authStore.initializeAuth()
+    } catch (error) {
+      console.error('Erro ao inicializar autenticação:', error)
+    }
+  }
+
+  // Watch for authentication changes
+  watch(isAuthenticated, (newValue) => {
+    // Temporário: não redirecionar para login
+    // if (!newValue && router.currentRoute.value.meta.requiresAuth) {
+    //   router.push('/auth/login')
+    // }
+  })
+
+  return {
+    // State
+    isAuthenticated,
+    user,
+    userRole,
+    permissions,
+    isLoading,
+    isBlocked,
+    blockTimeRemaining,
+    
+    // Methods
+    login,
+    register,
+    logout,
+    forgotPassword,
+    resetPassword,
+    updateProfile,
+    changePassword,
+    
+    // Permission methods
+    hasPermission,
+    hasRole,
+    canAccessModule,
+    
+    // Navigation guards
+    requireAuth,
+    requireGuest,
+    requireRole,
+    requirePermission,
+    
+    // Initialization
+    initializeAuth
+  }
+}

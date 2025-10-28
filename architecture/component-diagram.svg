@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1000" height="740" viewBox="0 0 1000 740" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <style><![CDATA[
+      .box { fill: #ffffff; stroke: #1f2937; stroke-width: 2; rx: 10; }
+      .title { font-size: 18px; font-weight: 600; fill: #111827; }
+      .desc { font-size: 14px; fill: #374151; }
+      .arrow { stroke: #2563eb; stroke-width: 2; marker-end: url(#arrowhead); }
+      .arrow-secure { stroke: #059669; stroke-width: 2; marker-end: url(#arrowhead); }
+      .badge { fill: #2563eb; rx: 6; }
+      .badge-text { font-size: 12px; fill: #ffffff; font-weight: 600; }
+      .legend { font-size: 13px; fill: #374151; }
+    ]]></style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb" />
+    </marker>
+  </defs>
+
+  <!-- Header -->
+  <text x="500" y="40" text-anchor="middle" class="title">Arquitetura: Agente Python → API REST (FastAPI) → Banco (PostgreSQL/SQL Server) → Dashboard React</text>
+
+  <!-- Agent Python -->
+  <rect x="60" y="120" width="280" height="180" class="box" />
+  <text x="200" y="150" text-anchor="middle" class="title">Agente Python</text>
+  <text x="80" y="175" class="desc">• Coleta métricas da máquina</text>
+  <text x="80" y="195" class="desc">• Heartbeat e status</text>
+  <text x="80" y="215" class="desc">• Autenticação por token</text>
+  <text x="80" y="235" class="desc">• Envio de alertas</text>
+  <rect x="80" y="255" width="120" height="24" class="badge" />
+  <text x="140" y="272" text-anchor="middle" class="badge-text">Python 3.11</text>
+
+  <!-- API REST (FastAPI) -->
+  <rect x="360" y="120" width="300" height="260" class="box" />
+  <text x="510" y="150" text-anchor="middle" class="title">API REST (FastAPI)</text>
+  <text x="380" y="175" class="desc">• Endpoints: /machines/register, /machines/status, /tickets/create, /alerts/send</text>
+  <text x="380" y="195" class="desc">• Autenticação JWT (access/refresh) + RBAC</text>
+  <text x="380" y="215" class="desc">• Assinatura de auditoria (HMAC-SHA256)</text>
+  <text x="380" y="235" class="desc">• Rate limiting, CORS, segurança</text>
+  <text x="380" y="255" class="desc">• SQLAlchemy + Alembic</text>
+  <rect x="380" y="275" width="120" height="24" class="badge" />
+  <text x="440" y="292" text-anchor="middle" class="badge-text">Python 3.11</text>
+  <rect x="510" y="275" width="110" height="24" class="badge" />
+  <text x="565" y="292" text-anchor="middle" class="badge-text">FastAPI</text>
+
+  <!-- Database -->
+  <rect x="700" y="140" width="260" height="220" class="box" />
+  <text x="830" y="170" text-anchor="middle" class="title">Banco de Dados</text>
+  <text x="720" y="195" class="desc">• PostgreSQL (primário)</text>
+  <text x="720" y="215" class="desc">• SQL Server (opcional)</text>
+  <text x="720" y="235" class="desc">• Tabelas: machines, assets, tickets, alerts, users</text>
+  <text x="720" y="255" class="desc">• Índices e partições (auditorias)</text>
+
+  <!-- Dashboard React -->
+  <rect x="200" y="380" width="300" height="210" class="box" />
+  <text x="350" y="410" text-anchor="middle" class="title">Dashboard React</text>
+  <text x="220" y="435" class="desc">• UI de monitoramento, auditorias e tickets</text>
+  <text x="220" y="455" class="desc">• Autenticação JWT (localStorage)</text>
+  <text x="220" y="475" class="desc">• Gráficos e alertas em tempo real</text>
+  <rect x="220" y="495" width="120" height="24" class="badge" />
+  <text x="280" y="512" text-anchor="middle" class="badge-text">React + TS</text>
+  <rect x="350" y="495" width="90" height="24" class="badge" />
+  <text x="395" y="512" text-anchor="middle" class="badge-text">Vite</text>
+
+  <!-- Security/Infra -->
+  <rect x="560" y="380" width="320" height="210" class="box" />
+  <text x="720" y="410" text-anchor="middle" class="title">Infra & Segurança</text>
+  <text x="580" y="435" class="desc">• TLS 1.2+ (Nginx/Traefik)</text>
+  <text x="580" y="455" class="desc">• Logs estruturados</text>
+  <text x="580" y="475" class="desc">• Rate limiting / CORS</text>
+  <text x="580" y="495" class="desc">• CI/CD, segredos via env</text>
+
+  <!-- Arrows -->
+  <line x1="340" y1="200" x2="360" y2="200" class="arrow-secure" />
+  <text x="350" y="190" class="legend">TLS + JWT</text>
+
+  <line x1="660" y1="230" x2="700" y2="230" class="arrow" />
+  <text x="680" y="220" class="legend">SQLAlchemy</text>
+
+  <line x1="350" y1="460" x2="500" y2="360" class="arrow-secure" />
+  <text x="430" y="380" class="legend">TLS + JWT</text>
+
+  <!-- Legend -->
+  <rect x="60" y="640" width="880" height="70" class="box" />
+  <text x="80" y="665" class="legend">Fluxos principais: (1) Agente → API (/machines/*), (2) Dashboard → API (auth, status, tickets, auditorias), (3) API ↔ Banco (ORM)</text>
+  <text x="80" y="685" class="legend">Segurança: TLS obrigatório, JWT access/refresh, RBAC, auditoria assinada (HMAC)</text>
+</svg>

@@ -1,0 +1,604 @@
+import logger from '@/utils/logger'
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useSLAContractsStore = defineStore('slaContracts', () => {
+  // State
+  const contracts = ref([
+    {
+      id: 'SLA-001',
+      title: 'Contrato de Manutenção Preventiva - Equipamentos Críticos',
+      description: 'Contrato para manutenção preventiva de equipamentos críticos da produção',
+      client: 'Departamento de Produção',
+      provider: 'Manutenção Interna',
+      type: 'preventive',
+      status: 'active',
+      priority: 'high',
+      startDate: '2024-01-01',
+      endDate: '2024-12-31',
+      responseTime: 2, // horas
+      resolutionTime: 8, // horas
+      availability: 99.5, // percentual
+      penaltyRate: 5, // percentual por hora de atraso
+      cost: 150000.00,
+      currency: 'BRL',
+      assets: ['EQ-001', 'EQ-002', 'EQ-005'],
+      technicians: ['TEC-001', 'TEC-003'],
+      metrics: {
+        responseTimeCompliance: 95.2,
+        resolutionTimeCompliance: 92.8,
+        availabilityAchieved: 99.2,
+        totalIncidents: 24,
+        resolvedIncidents: 23,
+        overdueIncidents: 1,
+        averageResponseTime: 1.8,
+        averageResolutionTime: 7.2,
+        costToDate: 87500.00,
+        penaltiesApplied: 250.00
+      },
+      terms: [
+        'Manutenção preventiva mensal obrigatória',
+        'Disponibilidade 24/7 para emergências',
+        'Relatórios mensais de performance',
+        'Peças de reposição incluídas no contrato'
+      ],
+      escalation: [
+        { level: 1, time: 2, contact: 'Supervisor de Manutenção' },
+        { level: 2, time: 4, contact: 'Gerente de Manutenção' },
+        { level: 3, time: 8, contact: 'Diretor de Operações' }
+      ],
+      createdAt: '2024-01-01T08:00:00Z',
+      updatedAt: '2024-01-15T14:30:00Z'
+    },
+    {
+      id: 'SLA-002',
+      title: 'Contrato de Suporte Técnico - Sistemas de Automação',
+      description: 'Suporte técnico especializado para sistemas de automação industrial',
+      client: 'Departamento de TI Industrial',
+      provider: 'TechSupport Solutions',
+      type: 'corrective',
+      status: 'active',
+      priority: 'medium',
+      startDate: '2024-02-01',
+      endDate: '2025-01-31',
+      responseTime: 4,
+      resolutionTime: 24,
+      availability: 98.0,
+      penaltyRate: 3,
+      cost: 85000.00,
+      currency: 'BRL',
+      assets: ['SYS-001', 'SYS-002', 'SYS-003'],
+      technicians: ['TEC-002', 'TEC-004'],
+      metrics: {
+        responseTimeCompliance: 88.5,
+        resolutionTimeCompliance: 91.2,
+        availabilityAchieved: 97.8,
+        totalIncidents: 18,
+        resolvedIncidents: 17,
+        overdueIncidents: 1,
+        averageResponseTime: 3.2,
+        averageResolutionTime: 22.5,
+        costToDate: 42500.00,
+        penaltiesApplied: 150.00
+      },
+      terms: [
+        'Suporte remoto prioritário',
+        'Visita técnica em até 24h se necessário',
+        'Atualizações de software incluídas',
+        'Treinamento trimestral da equipe'
+      ],
+      escalation: [
+        { level: 1, time: 4, contact: 'Analista Sênior' },
+        { level: 2, time: 8, contact: 'Coordenador Técnico' },
+        { level: 3, time: 12, contact: 'Gerente de Contas' }
+      ],
+      createdAt: '2024-02-01T09:00:00Z',
+      updatedAt: '2024-01-10T16:45:00Z'
+    },
+    {
+      id: 'SLA-003',
+      title: 'Contrato de Manutenção Corretiva - Infraestrutura',
+      description: 'Manutenção corretiva para infraestrutura predial e utilidades',
+      client: 'Departamento de Facilities',
+      provider: 'Manutenção Terceirizada Ltda',
+      type: 'corrective',
+      status: 'pending',
+      priority: 'low',
+      startDate: '2024-03-01',
+      endDate: '2024-08-31',
+      responseTime: 8,
+      resolutionTime: 48,
+      availability: 95.0,
+      penaltyRate: 2,
+      cost: 45000.00,
+      currency: 'BRL',
+      assets: ['INF-001', 'INF-002', 'INF-003'],
+      technicians: ['TEC-005'],
+      metrics: {
+        responseTimeCompliance: 0,
+        resolutionTimeCompliance: 0,
+        availabilityAchieved: 0,
+        totalIncidents: 0,
+        resolvedIncidents: 0,
+        overdueIncidents: 0,
+        averageResponseTime: 0,
+        averageResolutionTime: 0,
+        costToDate: 0,
+        penaltiesApplied: 0
+      },
+      terms: [
+        'Atendimento em horário comercial',
+        'Materiais por conta do contratante',
+        'Relatório mensal de atividades',
+        'Garantia de 90 dias nos serviços'
+      ],
+      escalation: [
+        { level: 1, time: 8, contact: 'Técnico Responsável' },
+        { level: 2, time: 16, contact: 'Supervisor de Campo' },
+        { level: 3, time: 24, contact: 'Gerente Comercial' }
+      ],
+      createdAt: '2024-02-15T10:30:00Z',
+      updatedAt: '2024-02-15T10:30:00Z'
+    },
+    {
+      id: 'SLA-004',
+      title: 'Contrato de Manutenção Preditiva - Motores Elétricos',
+      description: 'Manutenção preditiva com análise de vibração e termografia',
+      client: 'Departamento de Engenharia',
+      provider: 'PredictMaint Tech',
+      type: 'predictive',
+      status: 'expired',
+      priority: 'medium',
+      startDate: '2023-06-01',
+      endDate: '2024-01-31',
+      responseTime: 6,
+      resolutionTime: 16,
+      availability: 97.5,
+      penaltyRate: 4,
+      cost: 120000.00,
+      currency: 'BRL',
+      assets: ['MOT-001', 'MOT-002', 'MOT-003', 'MOT-004'],
+      technicians: ['TEC-006', 'TEC-007'],
+      metrics: {
+        responseTimeCompliance: 94.8,
+        resolutionTimeCompliance: 96.2,
+        availabilityAchieved: 98.1,
+        totalIncidents: 12,
+        resolvedIncidents: 12,
+        overdueIncidents: 0,
+        averageResponseTime: 5.2,
+        averageResolutionTime: 14.8,
+        costToDate: 120000.00,
+        penaltiesApplied: 0
+      },
+      terms: [
+        'Análise preditiva mensal',
+        'Relatórios técnicos detalhados',
+        'Recomendações de manutenção',
+        'Treinamento em análise preditiva'
+      ],
+      escalation: [
+        { level: 1, time: 6, contact: 'Especialista em Preditiva' },
+        { level: 2, time: 12, contact: 'Engenheiro Sênior' },
+        { level: 3, time: 18, contact: 'Diretor Técnico' }
+      ],
+      createdAt: '2023-06-01T08:00:00Z',
+      updatedAt: '2024-01-31T17:00:00Z'
+    }
+  ])
+
+  const clients = ref([
+    { id: 'CLI-001', name: 'Departamento de Produção', contact: 'João Silva', email: 'joao.silva@empresa.com' },
+    { id: 'CLI-002', name: 'Departamento de TI Industrial', contact: 'Maria Santos', email: 'maria.santos@empresa.com' },
+    { id: 'CLI-003', name: 'Departamento de Facilities', contact: 'Pedro Costa', email: 'pedro.costa@empresa.com' },
+    { id: 'CLI-004', name: 'Departamento de Engenharia', contact: 'Ana Oliveira', email: 'ana.oliveira@empresa.com' }
+  ])
+
+  const providers = ref([
+    { id: 'PRO-001', name: 'Manutenção Interna', contact: 'Carlos Mendes', email: 'carlos.mendes@empresa.com' },
+    { id: 'PRO-002', name: 'TechSupport Solutions', contact: 'Roberto Lima', email: 'roberto@techsupport.com' },
+    { id: 'PRO-003', name: 'Manutenção Terceirizada Ltda', contact: 'Fernanda Rocha', email: 'fernanda@terceirizada.com' },
+    { id: 'PRO-004', name: 'PredictMaint Tech', contact: 'Lucas Ferreira', email: 'lucas@predictmaint.com' }
+  ])
+
+  const availableAssets = ref([
+    { code: 'EQ-001', name: 'Compressor Principal', category: 'Equipamento' },
+    { code: 'EQ-002', name: 'Bomba Centrífuga A', category: 'Equipamento' },
+    { code: 'EQ-005', name: 'Caldeira Industrial', category: 'Equipamento' },
+    { code: 'SYS-001', name: 'Sistema SCADA', category: 'Sistema' },
+    { code: 'SYS-002', name: 'CLP Principal', category: 'Sistema' },
+    { code: 'SYS-003', name: 'Interface HMI', category: 'Sistema' },
+    { code: 'INF-001', name: 'Sistema Elétrico', category: 'Infraestrutura' },
+    { code: 'INF-002', name: 'Sistema Hidráulico', category: 'Infraestrutura' },
+    { code: 'INF-003', name: 'Sistema de Climatização', category: 'Infraestrutura' },
+    { code: 'MOT-001', name: 'Motor Principal 1', category: 'Motor' },
+    { code: 'MOT-002', name: 'Motor Principal 2', category: 'Motor' },
+    { code: 'MOT-003', name: 'Motor Auxiliar 1', category: 'Motor' },
+    { code: 'MOT-004', name: 'Motor Auxiliar 2', category: 'Motor' }
+  ])
+
+  const technicians = ref([
+    { id: 'TEC-001', name: 'Carlos Silva', specialty: 'Mecânica Industrial' },
+    { id: 'TEC-002', name: 'Ana Costa', specialty: 'Automação' },
+    { id: 'TEC-003', name: 'Pedro Santos', specialty: 'Elétrica' },
+    { id: 'TEC-004', name: 'Maria Oliveira', specialty: 'Sistemas' },
+    { id: 'TEC-005', name: 'João Ferreira', specialty: 'Predial' },
+    { id: 'TEC-006', name: 'Lucas Mendes', specialty: 'Análise Preditiva' },
+    { id: 'TEC-007', name: 'Fernanda Lima', specialty: 'Vibração' }
+  ])
+
+  // Filters
+  const filters = ref({
+    status: '',
+    type: '',
+    priority: '',
+    client: '',
+    provider: ''
+  })
+
+  const searchTerm = ref('')
+  const loading = ref(false)
+  const error = ref(null)
+
+  // Getters
+  const stats = computed(() => {
+    const total = contracts.value.length
+    const active = contracts.value.filter(c => c.status === 'active').length
+    const pending = contracts.value.filter(c => c.status === 'pending').length
+    const expired = contracts.value.filter(c => c.status === 'expired').length
+    
+    const totalCost = contracts.value
+      .filter(c => c.status === 'active')
+      .reduce((sum, c) => sum + c.cost, 0)
+    
+    const avgCompliance = contracts.value
+      .filter(c => c.status === 'active')
+      .reduce((sum, c) => sum + c.metrics.responseTimeCompliance, 0) / 
+      (contracts.value.filter(c => c.status === 'active').length || 1)
+
+    const byType = contracts.value.reduce((acc, contract) => {
+      acc[contract.type] = (acc[contract.type] || 0) + 1
+      return acc
+    }, {})
+
+    const byPriority = contracts.value.reduce((acc, contract) => {
+      acc[contract.priority] = (acc[contract.priority] || 0) + 1
+      return acc
+    }, {})
+
+    return {
+      total,
+      active,
+      pending,
+      expired,
+      totalCost,
+      avgCompliance,
+      byType,
+      byPriority
+    }
+  })
+
+  const filteredContracts = computed(() => {
+    let filtered = contracts.value
+
+    // Apply search filter
+    if (searchTerm.value) {
+      const search = searchTerm.value.toLowerCase()
+      filtered = filtered.filter(contract =>
+        contract.title.toLowerCase().includes(search) ||
+        contract.description.toLowerCase().includes(search) ||
+        contract.client.toLowerCase().includes(search) ||
+        contract.provider.toLowerCase().includes(search) ||
+        contract.id.toLowerCase().includes(search)
+      )
+    }
+
+    // Apply other filters
+    if (filters.value.status) {
+      filtered = filtered.filter(contract => contract.status === filters.value.status)
+    }
+
+    if (filters.value.type) {
+      filtered = filtered.filter(contract => contract.type === filters.value.type)
+    }
+
+    if (filters.value.priority) {
+      filtered = filtered.filter(contract => contract.priority === filters.value.priority)
+    }
+
+    if (filters.value.client) {
+      filtered = filtered.filter(contract => contract.client === filters.value.client)
+    }
+
+    if (filters.value.provider) {
+      filtered = filtered.filter(contract => contract.provider === filters.value.provider)
+    }
+
+    return filtered
+  })
+
+  const expiringContracts = computed(() => {
+    const today = new Date()
+    const thirtyDaysFromNow = new Date(today.getTime() + (30 * 24 * 60 * 60 * 1000))
+    
+    return contracts.value.filter(contract => {
+      const endDate = new Date(contract.endDate)
+      return contract.status === 'active' && endDate <= thirtyDaysFromNow && endDate >= today
+    }).sort((a, b) => new Date(a.endDate) - new Date(b.endDate))
+  })
+
+  // Actions
+  const fetchContracts = async () => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      // contracts.value would be populated from API
+    } catch (err) {
+      error.value = 'Erro ao carregar contratos SLA'
+      logger.error('Error fetching contracts:', err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const createContract = async (contractData) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const newContract = {
+        ...contractData,
+        id: `SLA-${String(contracts.value.length + 1).padStart(3, '0')}`,
+        metrics: {
+          responseTimeCompliance: 0,
+          resolutionTimeCompliance: 0,
+          availabilityAchieved: 0,
+          totalIncidents: 0,
+          resolvedIncidents: 0,
+          overdueIncidents: 0,
+          averageResponseTime: 0,
+          averageResolutionTime: 0,
+          costToDate: 0,
+          penaltiesApplied: 0
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      
+      contracts.value.push(newContract)
+      return newContract
+    } catch (err) {
+      error.value = 'Erro ao criar contrato SLA'
+      logger.error('Error creating contract:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const updateContract = async (contractId, contractData) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const index = contracts.value.findIndex(c => c.id === contractId)
+      if (index !== -1) {
+        contracts.value[index] = {
+          ...contracts.value[index],
+          ...contractData,
+          updatedAt: new Date().toISOString()
+        }
+        return contracts.value[index]
+      }
+      throw new Error('Contrato não encontrado')
+    } catch (err) {
+      error.value = 'Erro ao atualizar contrato SLA'
+      logger.error('Error updating contract:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteContract = async (contractId) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const index = contracts.value.findIndex(c => c.id === contractId)
+      if (index !== -1) {
+        contracts.value.splice(index, 1)
+        return true
+      }
+      throw new Error('Contrato não encontrado')
+    } catch (err) {
+      error.value = 'Erro ao excluir contrato SLA'
+      logger.error('Error deleting contract:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const renewContract = async (contractId, newEndDate) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const index = contracts.value.findIndex(c => c.id === contractId)
+      if (index !== -1) {
+        contracts.value[index].endDate = newEndDate
+        contracts.value[index].status = 'active'
+        contracts.value[index].updatedAt = new Date().toISOString()
+        return contracts.value[index]
+      }
+      throw new Error('Contrato não encontrado')
+    } catch (err) {
+      error.value = 'Erro ao renovar contrato SLA'
+      logger.error('Error renewing contract:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const exportContracts = async (format = 'csv') => {
+    try {
+      const data = filteredContracts.value.map(contract => ({
+        'ID': contract.id,
+        'Título': contract.title,
+        'Cliente': contract.client,
+        'Fornecedor': contract.provider,
+        'Tipo': getTypeLabel(contract.type),
+        'Status': getStatusLabel(contract.status),
+        'Prioridade': getPriorityLabel(contract.priority),
+        'Data Início': formatDate(contract.startDate),
+        'Data Fim': formatDate(contract.endDate),
+        'Tempo Resposta (h)': contract.responseTime,
+        'Tempo Resolução (h)': contract.resolutionTime,
+        'Disponibilidade (%)': contract.availability,
+        'Custo': contract.cost,
+        'Compliance Resposta (%)': contract.metrics.responseTimeCompliance,
+        'Compliance Resolução (%)': contract.metrics.resolutionTimeCompliance,
+        'Disponibilidade Atingida (%)': contract.metrics.availabilityAchieved
+      }))
+
+      if (format === 'csv') {
+        const csv = [
+          Object.keys(data[0]).join(','),
+          ...data.map(row => Object.values(row).join(','))
+        ].join('\n')
+        
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `contratos-sla-${new Date().toISOString().split('T')[0]}.csv`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      }
+      
+      return data
+    } catch (err) {
+      error.value = 'Erro ao exportar contratos SLA'
+      logger.error('Error exporting contracts:', err)
+      throw err
+    }
+  }
+
+  const setFilters = (newFilters) => {
+    filters.value = { ...filters.value, ...newFilters }
+  }
+
+  const clearFilters = () => {
+    filters.value = {
+      status: '',
+      type: '',
+      priority: '',
+      client: '',
+      provider: ''
+    }
+    searchTerm.value = ''
+  }
+
+  // Helper functions
+  const getStatusLabel = (status) => {
+    const labels = {
+      active: 'Ativo',
+      pending: 'Pendente',
+      expired: 'Expirado',
+      suspended: 'Suspenso'
+    }
+    return labels[status] || status
+  }
+
+  const getTypeLabel = (type) => {
+    const labels = {
+      preventive: 'Preventiva',
+      corrective: 'Corretiva',
+      predictive: 'Preditiva',
+      emergency: 'Emergencial'
+    }
+    return labels[type] || type
+  }
+
+  const getPriorityLabel = (priority) => {
+    const labels = {
+      low: 'Baixa',
+      medium: 'Média',
+      high: 'Alta',
+      urgent: 'Urgente'
+    }
+    return labels[priority] || priority
+  }
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('pt-BR')
+  }
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value)
+  }
+
+  const calculateDaysUntilExpiry = (endDate) => {
+    const today = new Date()
+    const expiry = new Date(endDate)
+    const diffTime = expiry - today
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  return {
+    // State
+    contracts,
+    clients,
+    providers,
+    availableAssets,
+    technicians,
+    filters,
+    searchTerm,
+    loading,
+    error,
+    
+    // Getters
+    stats,
+    filteredContracts,
+    expiringContracts,
+    
+    // Actions
+    fetchContracts,
+    createContract,
+    updateContract,
+    deleteContract,
+    renewContract,
+    exportContracts,
+    setFilters,
+    clearFilters,
+    
+    // Helpers
+    getStatusLabel,
+    getTypeLabel,
+    getPriorityLabel,
+    formatDate,
+    formatCurrency,
+    calculateDaysUntilExpiry
+  }
+})

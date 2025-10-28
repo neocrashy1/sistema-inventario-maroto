@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-label="Diagrama de componentes: Agente Python → API REST → Banco → Dashboard React">
+  <defs>
+    <style>
+      .box { fill: #1f2937; stroke: #93c5fd; stroke-width: 2; rx: 10; }
+      .title { font: 700 18px 'Segoe UI', Tahoma, sans-serif; fill: #f8fafc; }
+      .text { font: 400 14px 'Segoe UI', Tahoma, sans-serif; fill: #e5e7eb; }
+      .arrow { stroke: #93c5fd; stroke-width: 2; marker-end: url(#arrowhead); }
+      .label { font: 600 13px 'Segoe UI', Tahoma, sans-serif; fill: #bfdbfe; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#93c5fd" />
+    </marker>
+  </defs>
+
+  <!-- Dashboard React (Browser) -->
+  <rect class="box" x="60" y="60" width="360" height="160" />
+  <text class="title" x="80" y="95">Dashboard React (Web)</text>
+  <text class="text" x="80" y="125">• React 18 + Vite + TypeScript</text>
+  <text class="text" x="80" y="145">• UI: Chakra UI / Material UI</text>
+  <text class="text" x="80" y="165">• Data: React Query (REST)</text>
+  <text class="text" x="80" y="185">• Auth: JWT (Bearer) com Refresh Cookie</text>
+
+  <!-- API REST (FastAPI) -->
+  <rect class="box" x="780" y="60" width="360" height="200" />
+  <text class="title" x="800" y="95">API REST (FastAPI)</text>
+  <text class="text" x="800" y="125">• Endpoints: /machines/register, /machines/status</text>
+  <text class="text" x="800" y="145">• Endpoints: /tickets/create, /alerts/send</text>
+  <text class="text" x="800" y="165">• Pydantic + SQLAlchemy + Alembic</text>
+  <text class="text" x="800" y="185">• Uvicorn/Gunicorn, NGINX TLS</text>
+  <text class="text" x="800" y="205">• RBAC, Rate limiting, Auditoria</text>
+
+  <!-- Banco de Dados -->
+  <rect class="box" x="780" y="320" width="360" height="200" />
+  <text class="title" x="800" y="355">Banco de Dados</text>
+  <text class="text" x="800" y="385">• Preferência: PostgreSQL</text>
+  <text class="text" x="800" y="405">• Alternativa: SQL Server</text>
+  <text class="text" x="800" y="425">• Tabelas: Users, Machines, MachineStatus</text>
+  <text class="text" x="800" y="445">• Tabelas: Tickets, Alerts, ApiTokens, AuditLogs</text>
+
+  <!-- Agente Python (na máquina) -->
+  <rect class="box" x="60" y="320" width="360" height="220" />
+  <text class="title" x="80" y="355">Agente Python (Host)</text>
+  <text class="text" x="80" y="385">• Python 3.11, psutil, requests</text>
+  <text class="text" x="80" y="405">• Registro e heartbeat</text>
+  <text class="text" x="80" y="425">• Coleta de métricas (CPU/RAM/Disk)</text>
+  <text class="text" x="80" y="445">• Autenticação via token do agente</text>
+  <text class="text" x="80" y="465">• Canal seguro: HTTPS/TLS (mTLS opcional)</text>
+
+  <!-- Segurança e Autenticação -->
+  <rect class="box" x="420" y="560" width="360" height="160" />
+  <text class="title" x="440" y="595">Segurança</text>
+  <text class="text" x="440" y="625">• TLS 1.2+, HSTS, CORS</text>
+  <text class="text" x="440" y="645">• JWT RS256, Refresh em HttpOnly Cookie</text>
+  <text class="text" x="440" y="665">• RBAC (admin, operator, agent)</text>
+  <text class="text" x="440" y="685">• Rate limiting, Auditoria, Logs</text>
+
+  <!-- Setas de comunicação -->
+  <!-- Browser → API -->
+  <line class="arrow" x1="420" y1="140" x2="780" y2="140" />
+  <text class="label" x="520" y="130">HTTPS/TLS • Bearer JWT</text>
+  <text class="label" x="520" y="150">CRUD, tickets, alerts</text>
+
+  <!-- Agent → API -->
+  <line class="arrow" x1="420" y1="410" x2="780" y2="160" />
+  <text class="label" x="530" y="310">HTTPS/TLS • Token do agente</text>
+  <text class="label" x="530" y="330">/machines/register • /machines/status</text>
+
+  <!-- API → DB -->
+  <line class="arrow" x1="960" y1="260" x2="960" y2="320" />
+  <text class="label" x="980" y="290">SQL (ORM)</text>
+
+  <!-- Legenda de fluxos -->
+  <text class="title" x="60" y="25">Arquitetura Cliente-Servidor</text>
+  <text class="text" x="60" y="45">Agente Python → API REST → Banco (PostgreSQL/SQL Server) → Dashboard React</text>
+</svg>

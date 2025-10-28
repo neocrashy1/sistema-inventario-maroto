@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" viewBox="0 0 1100 720" role="img" aria-label="Diagrama de componentes: Agente Python → API REST → Banco de Dados → Dashboard React">
+  <defs>
+    <style>
+      .box{fill:#0b3d91;stroke:#08306b;stroke-width:2;rx:10;ry:10}
+      .box-light{fill:#1f77b4;stroke:#0b3d91;stroke-width:2;rx:10;ry:10}
+      .box-green{fill:#2ca02c;stroke:#196619;stroke-width:2;rx:10;ry:10}
+      .box-yellow{fill:#ffbf00;stroke:#b38800;stroke-width:2;rx:10;ry:10}
+      .box-gray{fill:#6c757d;stroke:#495057;stroke-width:2;rx:10;ry:10}
+      .text{font-family:Segoe UI,Arial,sans-serif;font-size:16px;fill:#ffffff}
+      .text-dark{font-family:Segoe UI,Arial,sans-serif;font-size:16px;fill:#1b1e23}
+      .caption{font-size:13px;fill:#e6f2ff}
+      .link{stroke:#1f78b4;stroke-width:3;marker-end:url(#arrow)}
+      .link-dashed{stroke:#1f78b4;stroke-width:3;stroke-dasharray:6 6;marker-end:url(#arrow)}
+      .badge{fill:#ffffff;stroke:#0b3d91;stroke-width:1;rx:6;ry:6}
+      .badge-text{font-size:12px;fill:#0b3d91}
+      .title{font-family:Segoe UI,Arial,sans-serif;font-size:20px;fill:#0b3d91;font-weight:bold}
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1f78b4" />
+    </marker>
+  </defs>
+
+  <!-- Título -->
+  <text x="30" y="40" class="title">Arquitetura de Referência - Sistema Inventário LevitIIS</text>
+  <text x="30" y="65" class="text-dark">Agente Python → API REST (FastAPI) → Banco (PostgreSQL/SQL Server) → Dashboard React</text>
+
+  <!-- Agente Python -->
+  <rect x="40" y="140" width="280" height="140" class="box-light" />
+  <text x="60" y="170" class="text">Agente Python</text>
+  <text x="60" y="195" class="caption">Coleta métricas, registra máquinas, envia alertas</text>
+  <text x="60" y="220" class="caption">Auth: Bearer Token (JWT)</text>
+
+  <!-- API REST -->
+  <rect x="380" y="120" width="320" height="180" class="box" />
+  <text x="400" y="150" class="text">API REST (FastAPI)</text>
+  <text x="400" y="175" class="caption">/api/v1/machines/register</text>
+  <text x="400" y="195" class="caption">/api/v1/machines/status</text>
+  <text x="400" y="215" class="caption">/api/v1/tickets/create</text>
+  <text x="400" y="235" class="caption">/api/v1/alerts/send</text>
+  
+  <!-- Módulo de Autenticação -->
+  <rect x="720" y="130" width="160" height="160" class="box-yellow" />
+  <text x="740" y="160" class="text">Auth & Segurança</text>
+  <text x="740" y="185" class="caption">OAuth2 Password + JWT</text>
+  <text x="740" y="205" class="caption">Roles: admin, gestor, agent</text>
+  <text x="740" y="225" class="caption">TLS obrig. em produção</text>
+
+  <!-- Banco de Dados -->
+  <rect x="380" y="360" width="320" height="160" class="box-green" />
+  <text x="400" y="390" class="text">Banco de Dados</text>
+  <text x="400" y="415" class="caption">PostgreSQL (preferencial)</text>
+  <text x="400" y="435" class="caption">SQL Server (opcional)</text>
+  <text x="400" y="455" class="caption">Tabelas: machines, tickets, alerts, assets</text>
+
+  <!-- Dashboard React -->
+  <rect x="780" y="360" width="280" height="160" class="box-gray" />
+  <text x="800" y="390" class="text">Dashboard React</text>
+  <text x="800" y="415" class="caption">Consome API via HTTPS</text>
+  <text x="800" y="435" class="caption">Login → JWT → chamadas protegidas</text>
+
+  <!-- Fluxos -->
+  <line x1="320" y1="210" x2="380" y2="210" class="link" />
+  <rect x="330" y="180" width="60" height="30" class="badge" />
+  <text x="338" y="200" class="badge-text">HTTPS</text>
+
+  <line x1="540" y1="300" x2="540" y2="360" class="link" />
+  <rect x="510" y="320" width="60" height="30" class="badge" />
+  <text x="518" y="340" class="badge-text">SQL</text>
+
+  <line x1="700" y1="210" x2="720" y2="210" class="link" />
+  <rect x="660" y="180" width="60" height="30" class="badge" />
+  <text x="668" y="200" class="badge-text">JWT</text>
+
+  <line x1="700" y1="440" x2="780" y2="440" class="link" />
+  <rect x="730" y="410" width="60" height="30" class="badge" />
+  <text x="738" y="430" class="badge-text">HTTPS</text>
+
+  <!-- Legenda de Endpoints → Fluxos principais -->
+  <rect x="40" y="340" width="280" height="180" class="box-light" />
+  <text x="60" y="370" class="text">Fluxos principais</text>
+  <text x="60" y="395" class="caption">1) Agente → /machines/register</text>
+  <text x="60" y="415" class="caption">2) Agente → /machines/status</text>
+  <text x="60" y="435" class="caption">3) Agente/UI → /tickets/create</text>
+  <text x="60" y="455" class="caption">4) Agente → /alerts/send</text>
+
+  <!-- Observações de Segurança -->
+  <rect x="780" y="120" width="280" height="40" class="box-yellow" />
+  <text x="800" y="145" class="text">Políticas</text>
+  <rect x="780" y="170" width="280" height="160" class="box-yellow" />
+  <text x="800" y="195" class="caption">• TLS 1.2+ obrigatório (prod)</text>
+  <text x="800" y="215" class="caption">• Expiração/refresh de JWT</text>
+  <text x="800" y="235" class="caption">• RBAC por roles</text>
+  <text x="800" y="255" class="caption">• Rate limiting e logs</text>
+  <text x="800" y="275" class="caption">• mTLS opcional entre agentes</text>
+
+  <!-- Rodapé -->
+  <text x="30" y="690" class="text-dark">Diagrama gerado automaticamente • Versão 1.0</text>
+</svg>

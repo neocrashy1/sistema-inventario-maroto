@@ -1,0 +1,74 @@
+[
+  {
+    "test": "Backend Health Check",
+    "status": "PASS",
+    "details": "Version: 1.0.0",
+    "timestamp": "2025-10-01T10:42:30.247014"
+  },
+  {
+    "test": "Frontend Availability",
+    "status": "PASS",
+    "details": "Vue.js app container found",
+    "timestamp": "2025-10-01T10:42:30.251930"
+  },
+  {
+    "test": "Authentication",
+    "status": "PASS",
+    "details": "Token received for user: admin",
+    "timestamp": "2025-10-01T10:42:32.552789"
+  },
+  {
+    "test": "API - Users",
+    "status": "PASS",
+    "details": "Response size: 798 bytes",
+    "timestamp": "2025-10-01T10:42:34.603680"
+  },
+  {
+    "test": "API - Assets",
+    "status": "PASS",
+    "details": "Response size: 666 bytes",
+    "timestamp": "2025-10-01T10:42:36.650681"
+  },
+  {
+    "test": "API - Tickets",
+    "status": "PASS",
+    "details": "Response size: 536 bytes",
+    "timestamp": "2025-10-01T10:42:38.699282"
+  },
+  {
+    "test": "API - Alerts",
+    "status": "PASS",
+    "details": "Response size: 495 bytes",
+    "timestamp": "2025-10-01T10:42:40.753527"
+  },
+  {
+    "test": "API - Dashboard Stats",
+    "status": "PASS",
+    "details": "Response size: 477 bytes",
+    "timestamp": "2025-10-01T10:42:42.797913"
+  },
+  {
+    "test": "API - Dashboard Metrics",
+    "status": "PASS",
+    "details": "Response size: 1475 bytes",
+    "timestamp": "2025-10-01T10:42:44.863986"
+  },
+  {
+    "test": "CORS Configuration",
+    "status": "FAIL",
+    "details": "Missing CORS headers",
+    "timestamp": "2025-10-01T10:42:46.902428"
+  },
+  {
+    "test": "Security Headers",
+    "status": "PASS",
+    "details": "Found: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy",
+    "timestamp": "2025-10-01T10:42:48.925613"
+  },
+  {
+    "test": "Rate Limiting",
+    "status": "PASS",
+    "details": "Limit: 30, Remaining: 23",
+    "timestamp": "2025-10-01T10:42:59.087354"
+  }
+]

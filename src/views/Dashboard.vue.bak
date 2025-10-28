@@ -1,0 +1,729 @@
+<template>
+  <div class="dashboard" role="main" aria-labelledby="dashboard-title">
+    <!-- Page Header -->
+    <header class="page-header">
+      <div class="page-header-content">
+        <h1 id="dashboard-title">Dashboard de Inventário</h1>
+        <p>Visão geral do inventário de ativos</p>
+      </div>
+      <div class="page-actions">
+        <button 
+          class="btn btn-primary" 
+          @click="refreshData"
+          :disabled="loading"
+          :aria-label="loading ? 'Atualizando dados...' : 'Atualizar dados do dashboard'"
+          @keydown.enter="refreshData"
+          @keydown.space.prevent="refreshData"
+        >
+          <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }" aria-hidden="true"></i>
+          <span>{{ loading ? 'Atualizando...' : 'Atualizar' }}</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI Cards -->
+    <section class="kpi-section" aria-labelledby="kpi-section-title">
+      <h2 id="kpi-section-title" class="sr-only">Indicadores Principais de Performance</h2>
+      <div class="kpi-grid" role="group" aria-label="Cartões de métricas principais">
+        <article 
+          class="kpi-card" 
+          role="button"
+          tabindex="0"
+          @click="navigateToAssets"
+          @keydown.enter="navigateToAssets"
+          @keydown.space.prevent="navigateToAssets"
+          aria-label="Total de ativos: {{ totalAssets }}. Clique para ver detalhes dos ativos"
+        >
+          <div class="kpi-icon assets" aria-hidden="true">
+            <i class="fas fa-boxes"></i>
+          </div>
+          <div class="kpi-content">
+            <h3 aria-label="Número total de ativos">{{ totalAssets }}</h3>
+            <p>Total de Ativos</p>
+          </div>
+        </article>
+
+        <article 
+          class="kpi-card"
+          role="button"
+          tabindex="0"
+          @click="navigateToFinancial"
+          @keydown.enter="navigateToFinancial"
+          @keydown.space.prevent="navigateToFinancial"
+          aria-label="Valor total dos ativos: {{ formatCurrency(normalizedTotalValue) }}. Clique para ver relatórios financeiros"
+        >
+          <div class="kpi-icon value" aria-hidden="true">
+            <i class="fas fa-dollar-sign"></i>
+          </div>
+          <div class="kpi-content">
+            <h3 aria-label="Valor total dos ativos">{{ formatCurrency(normalizedTotalValue) }}</h3>
+            <p>Valor Total</p>
+          </div>
+        </article>
+
+        <article 
+          class="kpi-card"
+          role="button"
+          tabindex="0"
+          @click="navigateToActiveAssets"
+          @keydown.enter="navigateToActiveAssets"
+          @keydown.space.prevent="navigateToActiveAssets"
+          aria-label="Ativos ativos: {{ activeAssets }}. Clique para ver ativos em uso"
+        >
+          <div class="kpi-icon active" aria-hidden="true">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="kpi-content">
+            <h3 aria-label="Número de ativos ativos">{{ activeAssets }}</h3>
+            <p>Ativos Ativos</p>
+          </div>
+        </article>
+
+        <article 
+          class="kpi-card"
+          role="button"
+          tabindex="0"
+          @click="navigateToMaintenance"
+          @keydown.enter="navigateToMaintenance"
+          @keydown.space.prevent="navigateToMaintenance"
+          aria-label="Ativos em manutenção: {{ maintenanceCount }}. Clique para ver ordens de serviço"
+        >
+          <div class="kpi-icon maintenance" aria-hidden="true">
+            <i class="fas fa-tools"></i>
+          </div>
+          <div class="kpi-content">
+            <h3 aria-label="Número de ativos em manutenção">{{ maintenanceCount }}</h3>
+            <p>Em Manutenção</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="charts-section" aria-labelledby="charts-section-title">
+      <h2 id="charts-section-title" class="sr-only">Gráficos e Análises</h2>
+      <div v-if="!loading" class="charts-grid" role="group" aria-label="Gráficos de análise de dados">
+        <!-- Line Chart - Tendências -->
+        <div class="chart-container" role="img" aria-labelledby="trends-chart-title">
+          <SimpleLineChart
+            title="Tendências de Ativos"
+            :datasets="trendsData"
+            :labels="trendsLabels"
+            :width="400"
+            :height="250"
+          />
+        </div>
+
+        <!-- Pie Chart - Status -->
+        <div class="chart-container" role="img" aria-labelledby="status-chart-title">
+          <SimplePieChart
+            title="Distribuição por Status"
+            :data="statusData"
+            :size="250"
+            :donut="true"
+            :show-center-text="true"
+          />
+        </div>
+
+        <!-- Bar Chart - Categorias -->
+        <div class="chart-container" role="img" aria-labelledby="category-chart-title">
+          <SimpleBarChart
+            title="Ativos por Categoria"
+            :datasets="categoryData"
+            :labels="categoryLabels"
+            :width="400"
+            :height="250"
+          />
+        </div>
+
+        <!-- Bar Chart - Departamentos -->
+        <div class="chart-container" role="img" aria-labelledby="department-chart-title">
+          <SimpleBarChart
+            title="Ativos por Departamento"
+            :datasets="departmentData"
+            :labels="departmentLabels"
+            :width="400"
+            :height="250"
+          />
+        </div>
+
+      </div>
+
+      <div v-else>
+        <SkeletonLoader :rows="4" :columns="2" :rowHeight="220" />
+      </div>
+      </section>
+
+    <!-- Project Quality Monitor -->
+    <ProjectQualityMonitor />
+
+    <!-- Recent Activities -->
+    <div class="activities-section">
+      <div class="card">
+        <div class="card-header">
+          <h3>Atividades Recentes</h3>
+          <router-link to="/movements" class="view-all-link">
+            Ver todas
+          </router-link>
+        </div>
+        <div class="card-body">
+          <div class="activity-list">
+            <div 
+              v-for="activity in recentActivities" 
+              :key="activity.id"
+              class="activity-item"
+            >
+              <div class="activity-icon" :class="activity.type">
+                <i :class="activity.icon"></i>
+              </div>
+              <div class="activity-content">
+                <p class="activity-title">{{ activity.title }}</p>
+                <p class="activity-description">{{ activity.description }}</p>
+                <span class="activity-time">{{ formatTime(activity.time) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { computed, onMounted, onUnmounted, ref, defineAsyncComponent } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAssetsStore } from '@/stores/assets'
+import { useDashboardStore } from '@/stores/dashboard'
+
+
+// Lazy loading dos componentes para melhor performance
+const ProjectQualityMonitor = defineAsyncComponent({
+  loader: () => import('@/components/ProjectQualityMonitor.vue'),
+  loadingComponent: () => import('@/components/common/LoadingSpinner.vue'),
+  errorComponent: () => import('@/components/common/ErrorMessage.vue'),
+  delay: 200,
+  timeout: 3000
+})
+
+const SimpleLineChart = defineAsyncComponent({
+  loader: () => import('@/components/charts/SimpleLineChart.vue'),
+  loadingComponent: () => import('@/components/common/LoadingSpinner.vue'),
+  delay: 100,
+  timeout: 3000
+})
+
+const SimplePieChart = defineAsyncComponent({
+  loader: () => import('@/components/charts/SimplePieChart.vue'),
+  loadingComponent: () => import('@/components/common/LoadingSpinner.vue'),
+  delay: 100,
+  timeout: 3000
+})
+
+const SimpleBarChart = defineAsyncComponent({
+  loader: () => import('@/components/charts/SimpleBarChart.vue'),
+  loadingComponent: () => import('@/components/common/LoadingSpinner.vue'),
+  delay: 100,
+  timeout: 3000
+})
+
+import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
+
+export default {
+  name: 'Dashboard',
+  components: {
+    SimpleLineChart,
+    SimplePieChart,
+    SimpleBarChart,
+    ProjectQualityMonitor,
+    SkeletonLoader
+  },
+  
+  setup() {
+
+// Router
+const router = useRouter()
+
+// Stores
+const assetsStore = useAssetsStore()
+const dashboardStore = useDashboardStore()
+
+
+// Loading state
+const loading = ref(false)
+
+// Computed properties for KPIs
+const totalAssets = computed(() => {
+  return assetsStore.dashboardSummary.totalAssets || assetsStore.totalAssets
+})
+
+const totalValue = computed(() => {
+  return assetsStore.dashboardSummary.totalValue || assetsStore.totalValue
+})
+
+// Normalizar valor para número antes de formatar moeda
+const normalizedTotalValue = computed(() => {
+  const v = assetsStore.dashboardSummary.totalValue ?? assetsStore.totalValue
+  if (typeof v === 'string') {
+    const numeric = v
+      .replace(/[^\d,.-]/g, '') // remove símbolos e letras
+      .replace(/\./g, '')       // remove separador de milhar
+      .replace(',', '.')         // converte vírgula decimal para ponto
+    const num = parseFloat(numeric)
+    return isNaN(num) ? 0 : num
+  }
+  return v || 0
+})
+
+const activeCount = computed(() => {
+  return assetsStore.dashboardSummary.activeAssets || assetsStore.activeAssets
+})
+
+const maintenanceCount = computed(() => {
+  return assetsStore.dashboardSummary.inMaintenance || 
+         (assetsStore.assetsByStatus?.['Manutenção'] || 0)
+})
+const categoriesCount = computed(() => assetsStore.categories?.length || 0)
+const statusCount = computed(() => 4) // Ativo, Inativo, Manutenção, Descartado
+
+const recentActivities = computed(() => dashboardStore.recentActivities || [])
+
+// Chart data
+const trendsData = computed(() => [
+  {
+    label: 'Ativos Totais',
+    data: [120, 135, 142, 158, 165, 172, 180, 185, 192, 198, 205, 210],
+    color: '#3b82f6'
+  },
+  {
+    label: 'Valor (em milhares)',
+    data: [850, 920, 980, 1050, 1120, 1180, 1250, 1320, 1380, 1450, 1520, 1580],
+    color: '#10b981'
+  }
+])
+
+const trendsLabels = computed(() => [
+  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+])
+
+const statusData = computed(() => {
+  const statusCounts = assetsStore.assetsByStatus || {}
+  return [
+    { label: 'Ativo', value: statusCounts['Ativo'] || 0, color: '#10b981' },
+    { label: 'Inativo', value: statusCounts['Inativo'] || 0, color: '#f59e0b' },
+    { label: 'Manutenção', value: statusCounts['Manutenção'] || 0, color: '#ef4444' },
+    { label: 'Descartado', value: statusCounts['Descartado'] || 0, color: '#6b7280' }
+  ].filter(item => item.value > 0)
+})
+
+const categoryData = computed(() => {
+  const categoryCounts = assetsStore.assetsByCategory || {}
+  return [{
+    label: 'Quantidade',
+    data: Object.values(categoryCounts),
+    color: '#3b82f6'
+  }]
+})
+
+const categoryLabels = computed(() => {
+  const categoryCounts = assetsStore.assetsByCategory || {}
+  return Object.keys(categoryCounts)
+})
+
+// Dados de inventário por departamento
+const departmentData = computed(() => {
+  const deptCounts = assetsStore.assetsByDepartment || {}
+  return [{
+    label: 'Quantidade',
+    data: Object.values(deptCounts),
+    color: '#8b5cf6'
+  }]
+})
+
+const departmentLabels = computed(() => {
+  const deptCounts = assetsStore.assetsByDepartment || {}
+  return Object.keys(deptCounts)
+})
+
+
+
+// Methods
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value)
+}
+
+const formatTime = (time) => {
+  return new Date(time).toLocaleString('pt-BR')
+}
+
+// Navigation methods
+const navigateToAssets = () => {
+  router.push('/assets')
+}
+
+const navigateToFinancial = () => {
+  router.push('/reports')
+}
+
+const navigateToActiveAssets = () => {
+  router.push({ path: '/assets', query: { status: 'Ativo' } })
+}
+
+const navigateToMaintenance = () => {
+  router.push('/maintenance/work-orders')
+}
+
+const refreshData = async () => {
+  loading.value = true
+  try {
+    // Carregar dados do dashboard e resumo de ativos
+    await Promise.all([
+      assetsStore.fetchAssets(),
+      assetsStore.fetchDashboardSummary(),
+      dashboardStore.fetchDashboardData()
+    ])
+  } catch (error) {
+    console.error('Erro ao carregar dados do dashboard:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Initialize data and auto-refresh
+onMounted(async () => {
+  await refreshData()
+  dashboardStore.startAutoRefresh()
+})
+
+onUnmounted(() => {
+  dashboardStore.stopAutoRefresh()
+})
+
+return {
+  loading,
+  totalAssets,
+  totalValue,
+  normalizedTotalValue,
+  activeAssets: activeCount,
+  maintenanceCount,
+  categoriesCount,
+  statusCount,
+  recentActivities,
+  trendsData,
+  trendsLabels,
+  statusData,
+  categoryData,
+  categoryLabels,
+  departmentData,
+  departmentLabels,
+  formatCurrency,
+  formatTime,
+  refreshData,
+  navigateToAssets,
+  navigateToFinancial,
+  navigateToActiveAssets,
+  navigateToMaintenance
+}
+}
+}
+</script>
+
+<style scoped>
+/* Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dashboard {
+  padding: var(--spacing-lg);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.page-header-content h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.page-header-content p {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.kpi-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.kpi-card {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-lg);
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-card:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.kpi-card:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.kpi-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--spacing-lg);
+  font-size: 1.5rem;
+  color: white;
+}
+
+.kpi-icon.assets { background-color: var(--primary-color); }
+.kpi-icon.value { background-color: var(--success-color); }
+.kpi-icon.active { background-color: var(--info-color); }
+.kpi-icon.maintenance { background-color: var(--warning-color); }
+
+.kpi-content h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.kpi-content p {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.charts-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.chart-card {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.chart-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.chart-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.chart-body {
+  padding: var(--spacing-lg);
+}
+
+.chart-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border-color);
+}
+
+.chart-placeholder p {
+  color: var(--text-muted);
+  margin: var(--spacing-xs) 0;
+  text-align: center;
+}
+
+.activities-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.card {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.view-all-link {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.view-all-link:hover {
+  text-decoration: underline;
+}
+
+.card-body {
+  padding: var(--spacing-lg);
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.activity-icon.create { background-color: var(--success-color); }
+.activity-icon.update { background-color: var(--info-color); }
+.activity-icon.delete { background-color: var(--danger-color); }
+.activity-icon.maintenance { background-color: var(--warning-color); }
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 0.875rem;
+}
+
+.activity-description {
+  color: var(--text-muted);
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 0.8rem;
+}
+
+.activity-time {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-dark);
+}
+
+.btn-primary:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary:disabled .fa-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>

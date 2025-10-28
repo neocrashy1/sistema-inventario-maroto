@@ -1,0 +1,1025 @@
+<template>
+  <div class="employee-loans">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-header-content">
+        <h1 class="page-title">Empréstimos para Funcionários</h1>
+        <p class="page-subtitle">Gestão de empréstimos de ativos para colaboradores internos</p>
+      </div>
+      
+      <div class="page-actions">
+        <button class="btn btn-secondary" @click="exportLoans">
+          <i class="fas fa-download"></i>
+          Exportar
+        </button>
+        <button class="btn btn-primary" @click="showNewLoanModal = true">
+          <i class="fas fa-plus"></i>
+          Novo Empréstimo
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon primary">
+          <i class="fas fa-handshake"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">Total de Empréstimos</div>
+          <div class="stat-value">{{ loans.length }}</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon warning">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">Empréstimos Ativos</div>
+          <div class="stat-value">{{ activeLoans }}</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon danger">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">Em Atraso</div>
+          <div class="stat-value">{{ overdueLoans }}</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon success">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">Devolvidos</div>
+          <div class="stat-value">{{ returnedLoans }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+      <div class="filters-row">
+        <div class="filter-group">
+          <label>Buscar</label>
+          <div class="search-input">
+            <i class="fas fa-search"></i>
+            <input 
+              type="text" 
+              placeholder="Buscar por funcionário, ativo ou código..."
+              v-model="searchQuery"
+              @input="applyFilters"
+            >
+          </div>
+        </div>
+        
+        <div class="filter-group">
+          <label>Status</label>
+          <select v-model="selectedStatus" @change="applyFilters">
+            <option value="">Todos os status</option>
+            <option value="Ativo">Ativo</option>
+            <option value="Devolvido">Devolvido</option>
+            <option value="Em Atraso">Em Atraso</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>Departamento</label>
+          <select v-model="selectedDepartment" @change="applyFilters">
+            <option value="">Todos os departamentos</option>
+            <option value="TI">TI</option>
+            <option value="Administração">Administração</option>
+            <option value="Vendas">Vendas</option>
+            <option value="Marketing">Marketing</option>
+            <option value="RH">RH</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>Período</label>
+          <select v-model="selectedPeriod" @change="applyFilters">
+            <option value="">Todos os períodos</option>
+            <option value="today">Hoje</option>
+            <option value="week">Esta semana</option>
+            <option value="month">Este mês</option>
+            <option value="quarter">Este trimestre</option>
+          </select>
+        </div>
+        
+        <button class="btn btn-outline" @click="clearFilters">
+          <i class="fas fa-times"></i>
+          Limpar
+        </button>
+      </div>
+    </div>
+
+    <!-- Loans Table -->
+    <div class="table-container">
+      <table class="loans-table">
+        <thead>
+          <tr>
+            <th>
+              <input type="checkbox" v-model="selectAll" @change="toggleSelectAll">
+            </th>
+            <th>Código</th>
+            <th>Funcionário</th>
+            <th>Departamento</th>
+            <th>Ativo</th>
+            <th>Data Empréstimo</th>
+            <th>Data Prevista</th>
+            <th>Data Devolução</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="loan in filteredLoans" :key="loan.id" class="loan-row">
+            <td>
+              <input type="checkbox" v-model="selectedLoans" :value="loan.id">
+            </td>
+            <td>
+              <span class="loan-code">{{ loan.code }}</span>
+            </td>
+            <td>
+              <div class="employee-info">
+                <div class="employee-avatar">
+                  <i class="fas fa-user"></i>
+                </div>
+                <div>
+                  <div class="employee-name">{{ loan.employee.name }}</div>
+                  <div class="employee-email">{{ loan.employee.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="department-badge">{{ loan.employee.department }}</span>
+            </td>
+            <td>
+              <div class="asset-info">
+                <div class="asset-name">{{ loan.asset.name }}</div>
+                <div class="asset-code">{{ loan.asset.code }}</div>
+              </div>
+            </td>
+            <td>{{ formatDate(loan.loanDate) }}</td>
+            <td>{{ formatDate(loan.expectedReturnDate) }}</td>
+            <td>{{ loan.returnDate ? formatDate(loan.returnDate) : '-' }}</td>
+            <td>
+              <span class="badge" :class="getStatusClass(loan.status)">
+                {{ loan.status }}
+              </span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button 
+                  v-if="loan.status === 'Ativo'"
+                  class="btn btn-sm btn-success"
+                  @click="returnLoan(loan)"
+                  title="Registrar Devolução"
+                >
+                  <i class="fas fa-undo"></i>
+                </button>
+                <button 
+                  class="btn btn-sm btn-secondary"
+                  @click="editLoan(loan)"
+                  title="Editar"
+                >
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button 
+                  class="btn btn-sm btn-info"
+                  @click="viewLoanDetails(loan)"
+                  title="Ver Detalhes"
+                >
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- New Loan Modal -->
+    <div v-if="showNewLoanModal" class="modal-overlay" @click="closeModal">
+      <div class="modal-content large-modal" @click.stop>
+        <div class="modal-header">
+          <h2>Novo Empréstimo</h2>
+          <button class="close-btn" @click="closeModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <form @submit.prevent="createLoan">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Funcionário *</label>
+                <select v-model="loanForm.employeeId" required>
+                  <option value="">Selecione o funcionário</option>
+                  <option v-for="employee in employees" :key="employee.id" :value="employee.id">
+                    {{ employee.name }} - {{ employee.department }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Ativo *</label>
+                <select v-model="loanForm.assetId" required>
+                  <option value="">Selecione o ativo</option>
+                  <option v-for="asset in availableAssets" :key="asset.id" :value="asset.id">
+                    {{ asset.name }} ({{ asset.code }})
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Data do Empréstimo *</label>
+                <input 
+                  type="date" 
+                  v-model="loanForm.loanDate" 
+                  required
+                >
+              </div>
+              
+              <div class="form-group">
+                <label>Data Prevista de Devolução *</label>
+                <input 
+                  type="date" 
+                  v-model="loanForm.expectedReturnDate" 
+                  required
+                >
+              </div>
+            </div>
+            
+            <div class="form-group full-width">
+              <label>Observações</label>
+              <textarea 
+                v-model="loanForm.notes" 
+                rows="3"
+                placeholder="Observações sobre o empréstimo..."
+              ></textarea>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="closeModal">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-primary" @click="createLoan">
+            <i class="fas fa-save"></i>
+            Criar Empréstimo
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Return Loan Modal -->
+    <div v-if="showReturnModal" class="modal-overlay" @click="closeReturnModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>Registrar Devolução</h2>
+          <button class="close-btn" @click="closeReturnModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="return-info">
+            <h3>{{ returningLoan?.employee?.name }}</h3>
+            <p>{{ returningLoan?.asset?.name }} ({{ returningLoan?.asset?.code }})</p>
+            <p>Emprestado em: {{ formatDate(returningLoan?.loanDate) }}</p>
+            <p>Previsão: {{ formatDate(returningLoan?.expectedReturnDate) }}</p>
+          </div>
+          
+          <form @submit.prevent="confirmReturn">
+            <div class="form-group">
+              <label>Data de Devolução *</label>
+              <input 
+                type="date" 
+                v-model="returnForm.returnDate" 
+                required
+              >
+            </div>
+            
+            <div class="form-group">
+              <label>Condição do Ativo</label>
+              <select v-model="returnForm.condition">
+                <option value="Perfeito">Perfeito</option>
+                <option value="Bom">Bom</option>
+                <option value="Regular">Regular</option>
+                <option value="Danificado">Danificado</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Observações da Devolução</label>
+              <textarea 
+                v-model="returnForm.returnNotes" 
+                rows="3"
+                placeholder="Observações sobre a devolução..."
+              ></textarea>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="closeReturnModal">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-success" @click="confirmReturn">
+            <i class="fas fa-check"></i>
+            Confirmar Devolução
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div v-if="successMessage" class="success-message">
+      <i class="fas fa-check-circle"></i>
+      {{ successMessage }}
+    </div>
+
+    <div v-if="errorMessage" class="error-message">
+      <i class="fas fa-exclamation-triangle"></i>
+      {{ errorMessage }}
+    </div>
+  </div>
+</template>
+
+<script setup>
+import logger from '@/utils/logger'
+import { ref, computed, onMounted } from 'vue'
+import { useEmployeeLoansStore } from '@/stores/employeeLoans'
+
+const employeeLoansStore = useEmployeeLoansStore()
+
+// Estado reativo
+const showNewLoanModal = ref(false)
+const showReturnModal = ref(false)
+const searchQuery = ref('')
+const selectedStatus = ref('')
+const selectedDepartment = ref('')
+const selectedPeriod = ref('')
+const selectAll = ref(false)
+const selectedLoans = ref([])
+const successMessage = ref('')
+const errorMessage = ref('')
+
+// Dados simulados
+const loans = ref([
+  {
+    id: 1,
+    code: 'EMP001',
+    employee: {
+      id: 1,
+      name: 'João Silva',
+      email: 'joao.silva@empresa.com',
+      department: 'TI'
+    },
+    asset: {
+      id: 1,
+      name: 'Notebook Dell Latitude 5520',
+      code: 'NB001'
+    },
+    loanDate: '2024-01-15',
+    expectedReturnDate: '2024-02-15',
+    returnDate: null,
+    status: 'Ativo',
+    notes: 'Empréstimo para trabalho remoto',
+    condition: null,
+    returnNotes: null
+  },
+  {
+    id: 2,
+    code: 'EMP002',
+    employee: {
+      id: 2,
+      name: 'Maria Santos',
+      email: 'maria.santos@empresa.com',
+      department: 'Marketing'
+    },
+    asset: {
+      id: 2,
+      name: 'Câmera Canon EOS R6',
+      code: 'CAM001'
+    },
+    loanDate: '2024-01-10',
+    expectedReturnDate: '2024-01-20',
+    returnDate: '2024-01-18',
+    status: 'Devolvido',
+    notes: 'Para evento de marketing',
+    condition: 'Perfeito',
+    returnNotes: 'Devolvido em perfeitas condições'
+  },
+  {
+    id: 3,
+    code: 'EMP003',
+    employee: {
+      id: 3,
+      name: 'Carlos Lima',
+      email: 'carlos.lima@empresa.com',
+      department: 'Vendas'
+    },
+    asset: {
+      id: 3,
+      name: 'Tablet iPad Pro',
+      code: 'TAB001'
+    },
+    loanDate: '2024-01-05',
+    expectedReturnDate: '2024-01-12',
+    returnDate: null,
+    status: 'Em Atraso',
+    notes: 'Para apresentações de vendas',
+    condition: null,
+    returnNotes: null
+  }
+])
+
+const employees = ref([
+  { id: 1, name: 'João Silva', email: 'joao.silva@empresa.com', department: 'TI' },
+  { id: 2, name: 'Maria Santos', email: 'maria.santos@empresa.com', department: 'Marketing' },
+  { id: 3, name: 'Carlos Lima', email: 'carlos.lima@empresa.com', department: 'Vendas' },
+  { id: 4, name: 'Ana Costa', email: 'ana.costa@empresa.com', department: 'Administração' },
+  { id: 5, name: 'Pedro Oliveira', email: 'pedro.oliveira@empresa.com', department: 'RH' }
+])
+
+const availableAssets = ref([
+  { id: 1, name: 'Notebook Dell Latitude 5520', code: 'NB001' },
+  { id: 2, name: 'Câmera Canon EOS R6', code: 'CAM001' },
+  { id: 3, name: 'Tablet iPad Pro', code: 'TAB001' },
+  { id: 4, name: 'Projetor Epson PowerLite', code: 'PROJ001' },
+  { id: 5, name: 'Monitor LG UltraWide', code: 'MON001' }
+])
+
+// Formulários
+const loanForm = ref({
+  employeeId: '',
+  assetId: '',
+  loanDate: '',
+  expectedReturnDate: '',
+  notes: ''
+})
+
+const returnForm = ref({
+  returnDate: '',
+  condition: 'Perfeito',
+  returnNotes: ''
+})
+
+const returningLoan = ref(null)
+
+// Computed
+const filteredLoans = computed(() => {
+  let filtered = loans.value
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(loan => 
+      loan.employee.name.toLowerCase().includes(query) ||
+      loan.asset.name.toLowerCase().includes(query) ||
+      loan.code.toLowerCase().includes(query)
+    )
+  }
+
+  if (selectedStatus.value) {
+    filtered = filtered.filter(loan => loan.status === selectedStatus.value)
+  }
+
+  if (selectedDepartment.value) {
+    filtered = filtered.filter(loan => loan.employee.department === selectedDepartment.value)
+  }
+
+  return filtered
+})
+
+const activeLoans = computed(() => {
+  return loans.value.filter(loan => loan.status === 'Ativo').length
+})
+
+const overdueLoans = computed(() => {
+  return loans.value.filter(loan => loan.status === 'Em Atraso').length
+})
+
+const returnedLoans = computed(() => {
+  return loans.value.filter(loan => loan.status === 'Devolvido').length
+})
+
+// Métodos
+const applyFilters = () => {
+  // Filtros são aplicados automaticamente via computed
+}
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  selectedStatus.value = ''
+  selectedDepartment.value = ''
+  selectedPeriod.value = ''
+}
+
+const toggleSelectAll = () => {
+  if (selectAll.value) {
+    selectedLoans.value = filteredLoans.value.map(loan => loan.id)
+  } else {
+    selectedLoans.value = []
+  }
+}
+
+const getStatusClass = (status) => {
+  const classes = {
+    'Ativo': 'badge-warning',
+    'Devolvido': 'badge-success',
+    'Em Atraso': 'badge-danger',
+    'Cancelado': 'badge-secondary'
+  }
+  return classes[status] || 'badge-secondary'
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleDateString('pt-BR')
+}
+
+const createLoan = () => {
+  try {
+    const employee = employees.value.find(e => e.id == loanForm.value.employeeId)
+    const asset = availableAssets.value.find(a => a.id == loanForm.value.assetId)
+    
+    const newLoan = {
+      id: Date.now(),
+      code: `EMP${String(loans.value.length + 1).padStart(3, '0')}`,
+      employee,
+      asset,
+      loanDate: loanForm.value.loanDate,
+      expectedReturnDate: loanForm.value.expectedReturnDate,
+      returnDate: null,
+      status: 'Ativo',
+      notes: loanForm.value.notes,
+      condition: null,
+      returnNotes: null
+    }
+    
+    loans.value.push(newLoan)
+    successMessage.value = 'Empréstimo criado com sucesso!'
+    closeModal()
+    setTimeout(() => successMessage.value = '', 3000)
+    
+  } catch (error) {
+    errorMessage.value = 'Erro ao criar empréstimo: ' + error.message
+    setTimeout(() => errorMessage.value = '', 5000)
+  }
+}
+
+const returnLoan = (loan) => {
+  returningLoan.value = loan
+  returnForm.value.returnDate = new Date().toISOString().split('T')[0]
+  showReturnModal.value = true
+}
+
+const confirmReturn = () => {
+  try {
+    const loan = loans.value.find(l => l.id === returningLoan.value.id)
+    if (loan) {
+      loan.returnDate = returnForm.value.returnDate
+      loan.status = 'Devolvido'
+      loan.condition = returnForm.value.condition
+      loan.returnNotes = returnForm.value.returnNotes
+    }
+    
+    successMessage.value = 'Devolução registrada com sucesso!'
+    closeReturnModal()
+    setTimeout(() => successMessage.value = '', 3000)
+    
+  } catch (error) {
+    errorMessage.value = 'Erro ao registrar devolução: ' + error.message
+    setTimeout(() => errorMessage.value = '', 5000)
+  }
+}
+
+const editLoan = (loan) => {
+  logger.debug('Editar empréstimo:', loan)
+}
+
+const viewLoanDetails = (loan) => {
+  logger.debug('Ver detalhes do empréstimo:', loan)
+}
+
+const closeModal = () => {
+  showNewLoanModal.value = false
+  loanForm.value = {
+    employeeId: '',
+    assetId: '',
+    loanDate: '',
+    expectedReturnDate: '',
+    notes: ''
+  }
+}
+
+const closeReturnModal = () => {
+  showReturnModal.value = false
+  returningLoan.value = null
+  returnForm.value = {
+    returnDate: '',
+    condition: 'Perfeito',
+    returnNotes: ''
+  }
+}
+
+const exportLoans = () => {
+  logger.debug('Exportando empréstimos...')
+  successMessage.value = 'Exportação iniciada!'
+  setTimeout(() => successMessage.value = '', 3000)
+}
+
+onMounted(() => {
+  // Carregar dados se necessário
+})
+</script>
+
+<style scoped>
+.employee-loans {
+  padding: 0;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.page-header-content h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.page-header-content p {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.page-actions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.stat-card {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.stat-icon.primary { background-color: var(--primary-color); }
+.stat-icon.success { background-color: var(--success-color); }
+.stat-icon.warning { background-color: var(--warning-color); }
+.stat-icon.danger { background-color: var(--danger-color); }
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.filters-section {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.filters-row {
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 200px;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.search-input {
+  position: relative;
+}
+
+.search-input i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.search-input input {
+  padding-left: 40px;
+}
+
+.table-container {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.loans-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.loans-table th {
+  background-color: var(--bg-secondary);
+  padding: var(--spacing-md);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.loans-table td {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.loan-row:hover {
+  background-color: var(--bg-secondary);
+}
+
+.loan-code {
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.employee-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.employee-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.employee-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.employee-email {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.department-badge {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.asset-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.asset-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.asset-code {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.btn-sm {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.875rem;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.large-modal {
+  max-width: 800px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+}
+
+.modal-body {
+  padding: var(--spacing-lg);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.return-info {
+  background-color: var(--bg-secondary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.return-info h3 {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--text-primary);
+}
+
+.return-info p {
+  margin: var(--spacing-xs) 0;
+  color: var(--text-muted);
+}
+
+/* Messages */
+.success-message,
+.error-message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 600;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.success-message {
+  background-color: var(--success-color);
+}
+
+.error-message {
+  background-color: var(--danger-color);
+}
+
+@media (max-width: 768px) {
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-group {
+    min-width: auto;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .loans-table {
+    min-width: 800px;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: var(--spacing-md);
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

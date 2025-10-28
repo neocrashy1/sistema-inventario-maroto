@@ -1,0 +1,142 @@
+[
+  {
+    "test": "Frontend Performance",
+    "status": "PASS",
+    "details": "Page loaded in 0.010s",
+    "metrics": {
+      "load_time": "0.010s",
+      "page_size": "837 bytes",
+      "status_code": 200
+    },
+    "timestamp": "2025-10-01T10:49:26.445859"
+  },
+  {
+    "test": "Response Time - Health Check",
+    "status": "WARN",
+    "details": "Slow response: 2.043s",
+    "metrics": {
+      "avg_response_time": "2.043s",
+      "min_response_time": "2.030s",
+      "max_response_time": "2.076s",
+      "requests_tested": 10
+    },
+    "timestamp": "2025-10-01T10:49:49.139962"
+  },
+  {
+    "test": "Response Time - Users API",
+    "status": "WARN",
+    "details": "Slow response: 2.039s",
+    "metrics": {
+      "avg_response_time": "2.039s",
+      "min_response_time": "2.022s",
+      "max_response_time": "2.064s",
+      "requests_tested": 10
+    },
+    "timestamp": "2025-10-01T10:50:09.534812"
+  },
+  {
+    "test": "Response Time - Machines API",
+    "status": "WARN",
+    "details": "Slow response: 2.036s",
+    "metrics": {
+      "avg_response_time": "2.036s",
+      "min_response_time": "2.016s",
+      "max_response_time": "2.051s",
+      "requests_tested": 10
+    },
+    "timestamp": "2025-10-01T10:50:29.890755"
+  },
+  {
+    "test": "Response Time - Tickets API",
+    "status": "WARN",
+    "details": "Slow response: 2.048s",
+    "metrics": {
+      "avg_response_time": "2.048s",
+      "min_response_time": "2.028s",
+      "max_response_time": "2.082s",
+      "requests_tested": 10
+    },
+    "timestamp": "2025-10-01T10:50:50.373157"
+  },
+  {
+    "test": "Response Time - Dashboard Stats",
+    "status": "WARN",
+    "details": "Slow response: 2.044s",
+    "metrics": {
+      "avg_response_time": "2.044s",
+      "min_response_time": "2.031s",
+      "max_response_time": "2.055s",
+      "requests_tested": 10
+    },
+    "timestamp": "2025-10-01T10:51:10.818368"
+  },
+  {
+    "test": "Concurrent Load Test",
+    "status": "WARN",
+    "details": "Moderate performance: 100.0% success rate",
+    "metrics": {
+      "total_requests": 50,
+      "successful_requests": 50,
+      "failed_requests": 0,
+      "success_rate": "100.0%",
+      "total_time": "20.51s",
+      "requests_per_second": "2.44",
+      "avg_response_time": "2.042s",
+      "min_response_time": "2.015s",
+      "max_response_time": "2.068s"
+    },
+    "timestamp": "2025-10-01T10:51:31.331307"
+  },
+  {
+    "test": "Memory Leak Test",
+    "status": "PASS",
+    "details": "Stable performance over 100 requests",
+    "metrics": {
+      "total_requests": 100,
+      "avg_first_20": "2.046s",
+      "avg_last_20": "2.048s",
+      "performance_change": "+0.1%"
+    },
+    "timestamp": "2025-10-01T10:54:57.137038"
+  },
+  {
+    "test": "DB Performance - Users Query",
+    "status": "FAIL",
+    "details": "Slow queries: 2.052s",
+    "metrics": {
+      "avg_query_time": "2.052s",
+      "queries_tested": 5
+    },
+    "timestamp": "2025-10-01T10:55:07.400092"
+  },
+  {
+    "test": "DB Performance - Machines Query",
+    "status": "FAIL",
+    "details": "Slow queries: 2.067s",
+    "metrics": {
+      "avg_query_time": "2.067s",
+      "queries_tested": 5
+    },
+    "timestamp": "2025-10-01T10:55:17.738044"
+  },
+  {
+    "test": "DB Performance - Tickets Query",
+    "status": "FAIL",
+    "details": "Slow queries: 2.055s",
+    "metrics": {
+      "avg_query_time": "2.055s",
+      "queries_tested": 5
+    },
+    "timestamp": "2025-10-01T10:55:28.013033"
+  },
+  {
+    "test": "DB Performance - Dashboard Stats",
+    "status": "FAIL",
+    "details": "Slow queries: 2.055s",
+    "metrics": {
+      "avg_query_time": "2.055s",
+      "queries_tested": 5
+    },
+    "timestamp": "2025-10-01T10:55:38.289853"
+  }
+]

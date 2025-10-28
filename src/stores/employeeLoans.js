@@ -1,0 +1,589 @@
+import logger from '@/utils/logger'
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useEmployeeLoansStore = defineStore('employeeLoans', () => {
+  // Estado
+  const loans = ref([
+    {
+      id: 1,
+      code: 'EMP001',
+      employee: {
+        id: 1,
+        name: 'João Silva',
+        email: 'joao.silva@empresa.com',
+        department: 'TI',
+        position: 'Desenvolvedor Senior'
+      },
+      asset: {
+        id: 1,
+        name: 'Notebook Dell Latitude 5520',
+        code: 'NB001',
+        category: 'Informática',
+        serialNumber: 'DL123456789'
+      },
+      loanDate: '2024-01-15',
+      expectedReturnDate: '2024-02-15',
+      returnDate: null,
+      status: 'Ativo',
+      notes: 'Empréstimo para trabalho remoto durante projeto especial',
+      condition: null,
+      returnNotes: null,
+      createdAt: '2024-01-15T09:00:00Z',
+      updatedAt: '2024-01-15T09:00:00Z'
+    },
+    {
+      id: 2,
+      code: 'EMP002',
+      employee: {
+        id: 2,
+        name: 'Maria Santos',
+        email: 'maria.santos@empresa.com',
+        department: 'Marketing',
+        position: 'Coordenadora de Marketing'
+      },
+      asset: {
+        id: 2,
+        name: 'Câmera Canon EOS R6',
+        code: 'CAM001',
+        category: 'Audiovisual',
+        serialNumber: 'CN987654321'
+      },
+      loanDate: '2024-01-10',
+      expectedReturnDate: '2024-01-20',
+      returnDate: '2024-01-18',
+      status: 'Devolvido',
+      notes: 'Para evento de lançamento de produto',
+      condition: 'Perfeito',
+      returnNotes: 'Devolvido em perfeitas condições após evento',
+      createdAt: '2024-01-10T14:30:00Z',
+      updatedAt: '2024-01-18T16:45:00Z'
+    },
+    {
+      id: 3,
+      code: 'EMP003',
+      employee: {
+        id: 3,
+        name: 'Carlos Lima',
+        email: 'carlos.lima@empresa.com',
+        department: 'Vendas',
+        position: 'Gerente de Vendas'
+      },
+      asset: {
+        id: 3,
+        name: 'Tablet iPad Pro',
+        code: 'TAB001',
+        category: 'Informática',
+        serialNumber: 'IP456789123'
+      },
+      loanDate: '2024-01-05',
+      expectedReturnDate: '2024-01-12',
+      returnDate: null,
+      status: 'Em Atraso',
+      notes: 'Para apresentações de vendas em clientes',
+      condition: null,
+      returnNotes: null,
+      createdAt: '2024-01-05T11:15:00Z',
+      updatedAt: '2024-01-05T11:15:00Z'
+    },
+    {
+      id: 4,
+      code: 'EMP004',
+      employee: {
+        id: 4,
+        name: 'Ana Costa',
+        email: 'ana.costa@empresa.com',
+        department: 'Administração',
+        position: 'Analista Administrativo'
+      },
+      asset: {
+        id: 4,
+        name: 'Projetor Epson PowerLite',
+        code: 'PROJ001',
+        category: 'Audiovisual',
+        serialNumber: 'EP789123456'
+      },
+      loanDate: '2024-01-20',
+      expectedReturnDate: '2024-01-25',
+      returnDate: null,
+      status: 'Ativo',
+      notes: 'Para treinamento de equipe',
+      condition: null,
+      returnNotes: null,
+      createdAt: '2024-01-20T08:30:00Z',
+      updatedAt: '2024-01-20T08:30:00Z'
+    }
+  ])
+
+  const employees = ref([
+    { id: 1, name: 'João Silva', email: 'joao.silva@empresa.com', department: 'TI', position: 'Desenvolvedor Senior' },
+    { id: 2, name: 'Maria Santos', email: 'maria.santos@empresa.com', department: 'Marketing', position: 'Coordenadora de Marketing' },
+    { id: 3, name: 'Carlos Lima', email: 'carlos.lima@empresa.com', department: 'Vendas', position: 'Gerente de Vendas' },
+    { id: 4, name: 'Ana Costa', email: 'ana.costa@empresa.com', department: 'Administração', position: 'Analista Administrativo' },
+    { id: 5, name: 'Pedro Oliveira', email: 'pedro.oliveira@empresa.com', department: 'RH', position: 'Analista de RH' },
+    { id: 6, name: 'Fernanda Rocha', email: 'fernanda.rocha@empresa.com', department: 'Financeiro', position: 'Analista Financeiro' },
+    { id: 7, name: 'Roberto Silva', email: 'roberto.silva@empresa.com', department: 'TI', position: 'Analista de Sistemas' },
+    { id: 8, name: 'Luciana Mendes', email: 'luciana.mendes@empresa.com', department: 'Atendimento', position: 'Atendente' }
+  ])
+
+  const availableAssets = ref([
+    { id: 1, name: 'Notebook Dell Latitude 5520', code: 'NB001', category: 'Informática', status: 'Disponível' },
+    { id: 2, name: 'Câmera Canon EOS R6', code: 'CAM001', category: 'Audiovisual', status: 'Disponível' },
+    { id: 3, name: 'Tablet iPad Pro', code: 'TAB001', category: 'Informática', status: 'Emprestado' },
+    { id: 4, name: 'Projetor Epson PowerLite', code: 'PROJ001', category: 'Audiovisual', status: 'Emprestado' },
+    { id: 5, name: 'Monitor LG UltraWide', code: 'MON001', category: 'Informática', status: 'Disponível' },
+    { id: 6, name: 'Impressora HP LaserJet', code: 'IMP001', category: 'Informática', status: 'Disponível' },
+    { id: 7, name: 'Smartphone Samsung Galaxy', code: 'CEL001', category: 'Comunicação', status: 'Disponível' }
+  ])
+
+  const loading = ref(false)
+  const error = ref(null)
+
+  // Getters
+  const totalLoans = computed(() => loans.value.length)
+  
+  const activeLoans = computed(() => {
+    return loans.value.filter(loan => loan.status === 'Ativo')
+  })
+
+  const overdueLoans = computed(() => {
+    const today = new Date()
+    return loans.value.filter(loan => {
+      if (loan.status !== 'Ativo') return false
+      const expectedDate = new Date(loan.expectedReturnDate)
+      return expectedDate < today
+    })
+  })
+
+  const returnedLoans = computed(() => {
+    return loans.value.filter(loan => loan.status === 'Devolvido')
+  })
+
+  const loansByDepartment = computed(() => {
+    const departments = {}
+    loans.value.forEach(loan => {
+      const dept = loan.employee.department
+      if (!departments[dept]) {
+        departments[dept] = 0
+      }
+      departments[dept]++
+    })
+    return departments
+  })
+
+  const loansByStatus = computed(() => {
+    const statuses = {}
+    loans.value.forEach(loan => {
+      if (!statuses[loan.status]) {
+        statuses[loan.status] = 0
+      }
+      statuses[loan.status]++
+    })
+    return statuses
+  })
+
+  const assetsOnLoan = computed(() => {
+    return loans.value
+      .filter(loan => loan.status === 'Ativo')
+      .map(loan => loan.asset.id)
+  })
+
+  const availableAssetsForLoan = computed(() => {
+    return availableAssets.value.filter(asset => 
+      asset.status === 'Disponível' && !assetsOnLoan.value.includes(asset.id)
+    )
+  })
+
+  // Actions
+  const fetchLoans = async () => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Simular chamada à API
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Em uma aplicação real, aqui seria feita a chamada à API
+      // const response = await api.get('/employee-loans')
+      // loans.value = response.data
+      
+      loading.value = false
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const createLoan = async (loanData) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Validações
+      const employee = employees.value.find(e => e.id === loanData.employeeId)
+      const asset = availableAssets.value.find(a => a.id === loanData.assetId)
+      
+      if (!employee) {
+        throw new Error('Funcionário não encontrado')
+      }
+      
+      if (!asset) {
+        throw new Error('Ativo não encontrado')
+      }
+      
+      if (asset.status !== 'Disponível') {
+        throw new Error('Ativo não está disponível para empréstimo')
+      }
+
+      // Verificar se o funcionário já tem empréstimos ativos
+      const activeEmployeeLoans = loans.value.filter(loan => 
+        loan.employee.id === loanData.employeeId && loan.status === 'Ativo'
+      )
+      
+      if (activeEmployeeLoans.length >= 3) {
+        throw new Error('Funcionário já possui o limite máximo de empréstimos ativos (3)')
+      }
+
+      // Simular chamada à API
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const newLoan = {
+        id: Date.now(),
+        code: `EMP${String(loans.value.length + 1).padStart(3, '0')}`,
+        employee,
+        asset,
+        loanDate: loanData.loanDate,
+        expectedReturnDate: loanData.expectedReturnDate,
+        returnDate: null,
+        status: 'Ativo',
+        notes: loanData.notes || '',
+        condition: null,
+        returnNotes: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      loans.value.push(newLoan)
+      
+      // Atualizar status do ativo
+      const assetIndex = availableAssets.value.findIndex(a => a.id === loanData.assetId)
+      if (assetIndex !== -1) {
+        availableAssets.value[assetIndex].status = 'Emprestado'
+      }
+      
+      loading.value = false
+      return newLoan
+      
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const returnLoan = async (loanId, returnData) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Simular chamada à API
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const loanIndex = loans.value.findIndex(loan => loan.id === loanId)
+      if (loanIndex === -1) {
+        throw new Error('Empréstimo não encontrado')
+      }
+
+      const loan = loans.value[loanIndex]
+      if (loan.status !== 'Ativo') {
+        throw new Error('Este empréstimo não está ativo')
+      }
+
+      // Atualizar empréstimo
+      loans.value[loanIndex] = {
+        ...loan,
+        returnDate: returnData.returnDate,
+        status: 'Devolvido',
+        condition: returnData.condition,
+        returnNotes: returnData.returnNotes || '',
+        updatedAt: new Date().toISOString()
+      }
+
+      // Atualizar status do ativo
+      const assetIndex = availableAssets.value.findIndex(a => a.id === loan.asset.id)
+      if (assetIndex !== -1) {
+        availableAssets.value[assetIndex].status = 'Disponível'
+      }
+      
+      loading.value = false
+      return loans.value[loanIndex]
+      
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const updateLoan = async (loanId, loanData) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Simular chamada à API
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const loanIndex = loans.value.findIndex(loan => loan.id === loanId)
+      if (loanIndex === -1) {
+        throw new Error('Empréstimo não encontrado')
+      }
+
+      loans.value[loanIndex] = {
+        ...loans.value[loanIndex],
+        ...loanData,
+        updatedAt: new Date().toISOString()
+      }
+      
+      loading.value = false
+      return loans.value[loanIndex]
+      
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const cancelLoan = async (loanId, reason) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      // Simular chamada à API
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const loanIndex = loans.value.findIndex(loan => loan.id === loanId)
+      if (loanIndex === -1) {
+        throw new Error('Empréstimo não encontrado')
+      }
+
+      const loan = loans.value[loanIndex]
+      if (loan.status !== 'Ativo') {
+        throw new Error('Apenas empréstimos ativos podem ser cancelados')
+      }
+
+      // Atualizar empréstimo
+      loans.value[loanIndex] = {
+        ...loan,
+        status: 'Cancelado',
+        returnNotes: reason,
+        updatedAt: new Date().toISOString()
+      }
+
+      // Atualizar status do ativo
+      const assetIndex = availableAssets.value.findIndex(a => a.id === loan.asset.id)
+      if (assetIndex !== -1) {
+        availableAssets.value[assetIndex].status = 'Disponível'
+      }
+      
+      loading.value = false
+      return loans.value[loanIndex]
+      
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const getLoanById = (id) => {
+    return loans.value.find(loan => loan.id === id)
+  }
+
+  const getLoansByEmployee = (employeeId) => {
+    return loans.value.filter(loan => loan.employee.id === employeeId)
+  }
+
+  const getLoansByAsset = (assetId) => {
+    return loans.value.filter(loan => loan.asset.id === assetId)
+  }
+
+  const searchLoans = (query) => {
+    if (!query) return loans.value
+    
+    const searchTerm = query.toLowerCase()
+    return loans.value.filter(loan =>
+      loan.code.toLowerCase().includes(searchTerm) ||
+      loan.employee.name.toLowerCase().includes(searchTerm) ||
+      loan.employee.email.toLowerCase().includes(searchTerm) ||
+      loan.asset.name.toLowerCase().includes(searchTerm) ||
+      loan.asset.code.toLowerCase().includes(searchTerm) ||
+      loan.notes.toLowerCase().includes(searchTerm)
+    )
+  }
+
+  const filterLoansByStatus = (status) => {
+    if (!status) return loans.value
+    return loans.value.filter(loan => loan.status === status)
+  }
+
+  const filterLoansByDepartment = (department) => {
+    if (!department) return loans.value
+    return loans.value.filter(loan => loan.employee.department === department)
+  }
+
+  const filterLoansByDateRange = (startDate, endDate) => {
+    if (!startDate && !endDate) return loans.value
+    
+    return loans.value.filter(loan => {
+      const loanDate = new Date(loan.loanDate)
+      const start = startDate ? new Date(startDate) : new Date('1900-01-01')
+      const end = endDate ? new Date(endDate) : new Date('2100-12-31')
+      
+      return loanDate >= start && loanDate <= end
+    })
+  }
+
+  const getOverdueLoans = () => {
+    const today = new Date()
+    return loans.value.filter(loan => {
+      if (loan.status !== 'Ativo') return false
+      const expectedDate = new Date(loan.expectedReturnDate)
+      return expectedDate < today
+    })
+  }
+
+  const updateOverdueStatus = () => {
+    const today = new Date()
+    loans.value.forEach(loan => {
+      if (loan.status === 'Ativo') {
+        const expectedDate = new Date(loan.expectedReturnDate)
+        if (expectedDate < today) {
+          loan.status = 'Em Atraso'
+          loan.updatedAt = new Date().toISOString()
+        }
+      }
+    })
+  }
+
+  const exportLoans = async (format = 'csv', filters = {}) => {
+    try {
+      loading.value = true
+      
+      // Aplicar filtros se fornecidos
+      let loansToExport = loans.value
+      
+      if (filters.status) {
+        loansToExport = loansToExport.filter(loan => loan.status === filters.status)
+      }
+      
+      if (filters.department) {
+        loansToExport = loansToExport.filter(loan => loan.employee.department === filters.department)
+      }
+      
+      if (filters.startDate || filters.endDate) {
+        loansToExport = filterLoansByDateRange(filters.startDate, filters.endDate)
+      }
+
+      // Simular exportação
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      if (format === 'csv') {
+        const csvContent = generateCSV(loansToExport)
+        downloadFile(csvContent, 'emprestimos-funcionarios.csv', 'text/csv')
+      } else if (format === 'excel') {
+        // Implementar exportação para Excel
+        logger.debug('Exportação para Excel não implementada ainda')
+      }
+      
+      loading.value = false
+      return true
+      
+    } catch (err) {
+      error.value = err.message
+      loading.value = false
+      throw err
+    }
+  }
+
+  const generateCSV = (loansData) => {
+    const headers = [
+      'Código', 'Funcionário', 'Email', 'Departamento', 'Ativo', 'Código Ativo',
+      'Data Empréstimo', 'Data Prevista', 'Data Devolução', 'Status', 'Condição', 'Observações'
+    ]
+    
+    const rows = loansData.map(loan => [
+      loan.code,
+      loan.employee.name,
+      loan.employee.email,
+      loan.employee.department,
+      loan.asset.name,
+      loan.asset.code,
+      loan.loanDate,
+      loan.expectedReturnDate,
+      loan.returnDate || '',
+      loan.status,
+      loan.condition || '',
+      loan.notes
+    ])
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n')
+
+    return csvContent
+  }
+
+  const downloadFile = (content, filename, contentType) => {
+    const blob = new Blob([content], { type: contentType })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  }
+
+  const clearError = () => {
+    error.value = null
+  }
+
+  return {
+    // Estado
+    loans,
+    employees,
+    availableAssets,
+    loading,
+    error,
+    
+    // Getters
+    totalLoans,
+    activeLoans,
+    overdueLoans,
+    returnedLoans,
+    loansByDepartment,
+    loansByStatus,
+    assetsOnLoan,
+    availableAssetsForLoan,
+    
+    // Actions
+    fetchLoans,
+    createLoan,
+    returnLoan,
+    updateLoan,
+    cancelLoan,
+    getLoanById,
+    getLoansByEmployee,
+    getLoansByAsset,
+    searchLoans,
+    filterLoansByStatus,
+    filterLoansByDepartment,
+    filterLoansByDateRange,
+    getOverdueLoans,
+    updateOverdueStatus,
+    exportLoans,
+    clearError
+  }
+})

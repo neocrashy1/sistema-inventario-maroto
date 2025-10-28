@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  frontend:
+    image: nginx:alpine
+    container_name: levitiisl_frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./current/dist:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Notes:
+# - Ajuste o caminho para ./current/dist conforme a estrutura remota (/home/maroto/projects/Levitiisl/current/dist)
+# - Quando for usado no servidor, execute em /home/maroto/projects/Levitiisl/current ou atualize volume para o caminho absoluto.

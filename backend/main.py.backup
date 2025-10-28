@@ -1,0 +1,128 @@
+"""
+Levitiis AMS - Asset Management System API
+Main FastAPI application entry point
+"""
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+import uvicorn
+import structlog
+from contextlib import asynccontextmanager
+
+from app.core.config import settings
+from app.core.database import init_db
+from app.api.v1.api import api_router
+from app.core.exceptions import AppException
+from app.middleware import (
+    rate_limit_middleware,
+    validation_middleware,
+    security_middleware,
+    setup_cors_middleware
+)
+
+
+# Configure structured logging
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer()
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    wrapper_class=structlog.stdlib.BoundLogger,
+    cache_logger_on_first_use=True,
+)
+
+logger = structlog.get_logger()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events"""
+    # Startup
+    logger.info("Starting Levitiis AMS API", version=settings.APP_VERSION)
+    await init_db()
+    yield
+    # Shutdown
+    logger.info("Shutting down Levitiis AMS API")
+
+
+# Create FastAPI application
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description="Asset Management System API for Levitiis",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    docs_url=f"{settings.API_V1_STR}/docs",
+    redoc_url=f"{settings.API_V1_STR}/redoc",
+    lifespan=lifespan
+)
+
+# Security middlewares (order matters - applied in reverse order)
+# 1. Rate limiting (first to check)
+app.middleware("http")(rate_limit_middleware)
+
+# 2. Input validation and sanitization
+app.middleware("http")(validation_middleware)
+
+# 3. General security middleware
+app.middleware("http")(security_middleware)
+
+# 4. Trusted host middleware
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "*.levitiis.com"]
+)
+
+# 5. CORS middleware (setup with secure defaults)
+setup_cors_middleware(app, allowed_origins=settings.get_cors_origins())
+
+
+@app.exception_handler(AppException)
+async def app_exception_handler(request: Request, exc: AppException):
+    """Handle application exceptions"""
+    logger.error("Application exception", error=str(exc), path=request.url.path)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail, "error_code": exc.error_code}
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle general exceptions"""
+    logger.error("Unhandled exception", error=str(exc), path=request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "error_code": "INTERNAL_ERROR"}
+    )
+
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "version": settings.APP_VERSION}
+
+
+# Include API router
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=settings.DEBUG,
+        log_level=settings.LOG_LEVEL.lower()
+    )

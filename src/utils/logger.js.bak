@@ -1,0 +1,200 @@
+/**
+ * Sistema de logging centralizado
+ * Substitui console.log com logging estruturado e configurável
+ */
+
+const LOG_LEVELS = {
+  ERROR: 0,
+  WARN: 1,
+  INFO: 2,
+  DEBUG: 3
+}
+
+class Logger {
+  constructor() {
+    this.level = this.getLogLevel()
+    this.isDevelopment = import.meta.env.DEV
+    this.isProduction = import.meta.env.PROD
+  }
+
+  getLogLevel() {
+    const envLevel = import.meta.env.VITE_LOG_LEVEL || 'INFO'
+    return LOG_LEVELS[envLevel.toUpperCase()] || LOG_LEVELS.INFO
+  }
+
+  shouldLog(level) {
+    return level <= this.level
+  }
+
+  formatMessage(level, message, context = {}) {
+    const timestamp = new Date().toISOString()
+    const levelName = Object.keys(LOG_LEVELS)[level]
+    
+    return {
+      timestamp,
+      level: levelName,
+      message,
+      context,
+      environment: this.isDevelopment ? 'development' : 'production'
+    }
+  }
+
+  error(message, context = {}) {
+    if (!this.shouldLog(LOG_LEVELS.ERROR)) return
+
+    const logData = this.formatMessage(LOG_LEVELS.ERROR, message, context)
+    
+    if (this.isDevelopment) {
+      console.error(`[${logData.timestamp}] ERROR: ${message}`, context)
+    }
+    
+    // Em produção, enviar para serviço de logging
+    if (this.isProduction) {
+      this.sendToLoggingService(logData)
+    }
+  }
+
+  warn(message, context = {}) {
+    if (!this.shouldLog(LOG_LEVELS.WARN)) return
+
+    const logData = this.formatMessage(LOG_LEVELS.WARN, message, context)
+    
+    if (this.isDevelopment) {
+      console.warn(`[${logData.timestamp}] WARN: ${message}`, context)
+    }
+    
+    if (this.isProduction) {
+      this.sendToLoggingService(logData)
+    }
+  }
+
+  info(message, context = {}) {
+    if (!this.shouldLog(LOG_LEVELS.INFO)) return
+
+    const logData = this.formatMessage(LOG_LEVELS.INFO, message, context)
+    
+    if (this.isDevelopment) {
+      console.info(`[${logData.timestamp}] INFO: ${message}`, context)
+    }
+    
+    // Info logs podem ser enviados para analytics em produção
+    if (this.isProduction && this.isImportantInfo(message)) {
+      this.sendToLoggingService(logData)
+    }
+  }
+
+  debug(message, context = {}) {
+    if (!this.shouldLog(LOG_LEVELS.DEBUG)) return
+
+    const logData = this.formatMessage(LOG_LEVELS.DEBUG, message, context)
+    
+    // Debug logs apenas em desenvolvimento
+    if (this.isDevelopment) {
+      console.debug(`[${logData.timestamp}] DEBUG: ${message}`, context)
+    }
+  }
+
+  isImportantInfo(message) {
+    const importantKeywords = [
+      'user login',
+      'user logout',
+      'api error',
+      'network error',
+      'authentication',
+      'authorization',
+      'data export',
+      'file upload'
+    ]
+    
+    return importantKeywords.some(keyword => 
+      message.toLowerCase().includes(keyword)
+    )
+  }
+
+  async sendToLoggingService(logData) {
+    try {
+      // Implementar envio para serviço de logging (ex: Sentry, LogRocket, etc.)
+      // Por enquanto, armazenar localmente para análise
+      this.storeLogLocally(logData)
+    } catch (error) {
+      // Fallback silencioso para não quebrar a aplicação
+      if (this.isDevelopment) {
+        console.error('Failed to send log to service:', error)
+      }
+    }
+  }
+
+  storeLogLocally(logData) {
+    try {
+      const logs = (() => { try { return JSON.parse(localStorage.getItem('app_logs') || '[]') } catch { return [] } })()
+      logs.push(logData)
+      
+      // Manter apenas os últimos 100 logs
+      if (logs.length > 100) {
+        logs.splice(0, logs.length - 100)
+      }
+      
+      localStorage.setItem('app_logs', JSON.stringify(logs))
+    } catch (error) {
+      // Ignorar erros de localStorage
+    }
+  }
+
+  // Métodos utilitários para casos específicos
+  apiError(endpoint, error, context = {}) {
+    this.error(`API Error on ${endpoint}`, {
+      endpoint,
+      error: error.message || error,
+      status: error.response?.status,
+      ...context
+    })
+  }
+
+  userAction(action, context = {}) {
+    this.info(`User Action: ${action}`, context)
+  }
+
+  performance(operation, duration, context = {}) {
+    this.info(`Performance: ${operation} took ${duration}ms`, {
+      operation,
+      duration,
+      ...context
+    })
+  }
+
+  // Método para exportar logs (útil para debug)
+  exportLogs() {
+    try {
+      const logs = (() => { try { return JSON.parse(localStorage.getItem('app_logs') || '[]') } catch { return [] } })()
+      const blob = new Blob([JSON.stringify(logs, null, 2)], {
+        type: 'application/json'
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `app-logs-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      this.error('Failed to export logs', { error })
+    }
+  }
+
+  // Limpar logs antigos
+  clearLogs() {
+    try {
+      localStorage.removeItem('app_logs')
+      this.info('Logs cleared successfully')
+    } catch (error) {
+      this.error('Failed to clear logs', { error })
+    }
+  }
+}
+
+// Instância singleton
+const logger = new Logger()
+
+export default logger
+
+// Exports nomeados para facilitar o uso
+export const { error, warn, info, debug, apiError, userAction, performance } = logger

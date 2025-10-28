@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="740" viewBox="0 0 1000 740">
+  <defs>
+    <style><![CDATA[
+      .box { fill:#f7f9fc; stroke:#1f2937; stroke-width:1.5; rx:8; }
+      .title { font: bold 14px Arial, sans-serif; fill:#111827; }
+      .text { font: 12px Arial, sans-serif; fill:#374151; }
+      .arrow { stroke:#1f2937; stroke-width:1.5; marker-end:url(#arrowhead); }
+      .arrow-secure { stroke:#2563eb; stroke-width:1.8; marker-end:url(#arrowhead-blue); }
+      .legend { font: 12px Arial, sans-serif; fill:#111827; }
+    ]]></style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1f2937" />
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="500" y="40" text-anchor="middle" class="title">Arquitetura Cliente-Servidor (Levitiis)</text>
+  <text x="500" y="60" text-anchor="middle" class="text">Agente Python → API REST (FastAPI) → Banco (PostgreSQL/SQL Server) → Dashboard React</text>
+
+  <!-- Nginx + TLS -->
+  <rect x="60" y="100" width="260" height="110" class="box" />
+  <text x="80" y="125" class="title">Nginx + TLS</text>
+  <text x="80" y="145" class="text">• Terminação TLS (HTTPS)</text>
+  <text x="80" y="165" class="text">• Proxy para FastAPI</text>
+  <text x="80" y="185" class="text">• CORS seguro</text>
+
+  <!-- FastAPI Backend -->
+  <rect x="360" y="100" width="280" height="180" class="box" />
+  <text x="380" y="125" class="title">Backend API (FastAPI)</text>
+  <text x="380" y="145" class="text">/api/v1</text>
+  <text x="380" y="165" class="text">• /machines/register</text>
+  <text x="380" y="180" class="text">• /machines/status</text>
+  <text x="380" y="195" class="text">• /tickets/create</text>
+  <text x="380" y="210" class="text">• /alerts/send</text>
+  <text x="380" y="225" class="text">• JWT + Refresh Tokens</text>
+
+  <!-- Redis (Tokens) -->
+  <rect x="680" y="100" width="260" height="110" class="box" />
+  <text x="700" y="125" class="title">Redis (Tokens)</text>
+  <text x="700" y="145" class="text">• Blacklist & Revogação</text>
+  <text x="700" y="165" class="text">• Sessões e Rate Limit</text>
+
+  <!-- Database -->
+  <rect x="360" y="320" width="280" height="150" class="box" />
+  <text x="380" y="345" class="title">Banco de Dados</text>
+  <text x="380" y="365" class="text">• PostgreSQL / SQL Server</text>
+  <text x="380" y="385" class="text">• SQLAlchemy + Alembic</text>
+  <text x="380" y="405" class="text">• Tabelas: Machines, Tickets, Alerts</text>
+  <text x="380" y="425" class="text">• Índices & Constraints</text>
+
+  <!-- Agent Python -->
+  <rect x="60" y="320" width="260" height="150" class="box" />
+  <text x="80" y="345" class="title">Agente (Python)</text>
+  <text x="80" y="365" class="text">• Coleta de métricas</text>
+  <text x="80" y="385" class="text">• Registro e Status</text>
+  <text x="80" y="405" class="text">• Autenticação JWT</text>
+
+  <!-- Dashboard React -->
+  <rect x="680" y="320" width="260" height="150" class="box" />
+  <text x="700" y="345" class="title">Dashboard (React)</text>
+  <text x="700" y="365" class="text">• Axios com Bearer Token</text>
+  <text x="700" y="385" class="text">• Vite + TypeScript</text>
+  <text x="700" y="405" class="text">• Cache inteligente</text>
+
+  <!-- Arrows -->
+  <!-- React → Nginx (HTTPS) → FastAPI -->
+  <line x1="810" y1="300" x2="190" y2="210" class="arrow-secure" />
+  <text x="500" y="250" text-anchor="middle" class="legend">HTTPS (TLS 1.2+)</text>
+  <line x1="320" y1="155" x2="360" y2="155" class="arrow" />
+
+  <!-- Agent → FastAPI (HTTPS) via Nginx -->
+  <line x1="190" y1="320" x2="190" y2="210" class="arrow-secure" />
+  <line x1="190" y1="210" x2="360" y2="155" class="arrow" />
+
+  <!-- FastAPI ↔ Redis -->
+  <line x1="640" y1="155" x2="680" y2="155" class="arrow" />
+
+  <!-- FastAPI ↔ Database -->
+  <line x1="500" y1="280" x2="500" y2="320" class="arrow" />
+
+  <!-- Legends -->
+  <rect x="60" y="500" width="880" height="200" class="box" />
+  <text x="80" y="525" class="title">Padrões de Segurança</text>
+  <text x="80" y="545" class="text">• TLS em trânsito (HTTPS) e criptografia em repouso (TDE/PGCrypto conforme suporte)</text>
+  <text x="80" y="565" class="text">• Autenticação JWT com Refresh Tokens, revogação e expiração</text>
+  <text x="80" y="585" class="text">• RBAC por papéis e escopos, CORS restrito, Rate limiting</text>
+  <text x="80" y="605" class="text">• Logs de auditoria e monitoramento de integridade</text>
+  <text x="80" y="625" class="text">• Assinatura da trilha de auditoria (hash encadeado + HMAC)</text>
+  <text x="80" y="645" class="text">• HTTPSRedirectMiddleware ativado em produção</text>
+</svg>

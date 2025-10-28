@@ -1,0 +1,1218 @@
+<template>
+  <div class="modal-overlay" @click="$emit('close')">
+    <div class="modal-container" @click.stop>
+      <div class="modal-header">
+        <h2>
+          <i class="fas fa-qrcode"></i>
+          QR Code - {{ ativo?.descricao }}
+        </h2>
+        <button class="btn-close" @click="$emit('close')">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Informações do Ativo -->
+        <div class="ativo-info">
+          <div class="ativo-header">
+            <div class="ativo-icon">
+              <i :class="getCategoriaIcon(ativo?.categoria)"></i>
+            </div>
+            <div class="ativo-detalhes">
+              <h3>{{ ativo?.descricao }}</h3>
+              <p>{{ ativo?.codigo }} - {{ ativo?.patrimonio }}</p>
+              <div class="ativo-meta">
+                <span class="categoria">{{ ativo?.categoria }}</span>
+                <span class="status" :class="getStatusClass(ativo?.status)">
+                  {{ getStatusLabel(ativo?.status) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-container">
+          <div class="tabs-header">
+            <button 
+              class="tab-button" 
+              :class="{ active: tabAtiva === 'visualizar' }"
+              @click="tabAtiva = 'visualizar'"
+            >
+              <i class="fas fa-eye"></i>
+              Visualizar
+            </button>
+            <button 
+              class="tab-button" 
+              :class="{ active: tabAtiva === 'imprimir' }"
+              @click="tabAtiva = 'imprimir'"
+            >
+              <i class="fas fa-print"></i>
+              Imprimir
+            </button>
+            <button 
+              class="tab-button" 
+              :class="{ active: tabAtiva === 'configurar' }"
+              @click="tabAtiva = 'configurar'"
+            >
+              <i class="fas fa-cog"></i>
+              Configurar
+            </button>
+          </div>
+
+          <!-- Tab Visualizar -->
+          <div v-if="tabAtiva === 'visualizar'" class="tab-content">
+            <div class="qr-preview">
+              <div class="qr-container">
+                <canvas ref="qrCanvas" class="qr-canvas"></canvas>
+                <div class="qr-info">
+                  <h4>{{ ativo?.codigo }}</h4>
+                  <p>{{ ativo?.descricao }}</p>
+                </div>
+              </div>
+              
+              <div class="qr-actions">
+                <button class="btn btn-outline" @click="baixarQRCode">
+                  <i class="fas fa-download"></i>
+                  Baixar PNG
+                </button>
+                <button class="btn btn-outline" @click="copiarLink">
+                  <i class="fas fa-copy"></i>
+                  Copiar Link
+                </button>
+                <button class="btn btn-primary" @click="compartilhar">
+                  <i class="fas fa-share"></i>
+                  Compartilhar
+                </button>
+              </div>
+            </div>
+
+            <!-- Informações do QR Code -->
+            <div class="qr-details">
+              <h4>Informações do QR Code</h4>
+              <div class="details-grid">
+                <div class="detail-item">
+                  <label>URL:</label>
+                  <span class="url-text">{{ urlAtivo }}</span>
+                </div>
+                <div class="detail-item">
+                  <label>Formato:</label>
+                  <span>PNG - 300x300px</span>
+                </div>
+                <div class="detail-item">
+                  <label>Gerado em:</label>
+                  <span>{{ formatarData(new Date()) }}</span>
+                </div>
+                <div class="detail-item">
+                  <label>Válido até:</label>
+                  <span>Permanente</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab Imprimir -->
+          <div v-if="tabAtiva === 'imprimir'" class="tab-content">
+            <div class="print-options">
+              <h4>Opções de Impressão</h4>
+              
+              <div class="options-grid">
+                <div class="form-group">
+                  <label for="formato_etiqueta">Formato da Etiqueta</label>
+                  <select id="formato_etiqueta" v-model="opcoesPrint.formato">
+                    <option value="pequena">Pequena (2x1 cm)</option>
+                    <option value="media">Média (3x2 cm)</option>
+                    <option value="grande">Grande (5x3 cm)</option>
+                    <option value="personalizada">Personalizada</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="quantidade">Quantidade</label>
+                  <input 
+                    id="quantidade" 
+                    type="number" 
+                    v-model="opcoesPrint.quantidade"
+                    min="1" 
+                    max="100"
+                  >
+                </div>
+                
+                <div class="form-group">
+                  <label for="papel">Tipo de Papel</label>
+                  <select id="papel" v-model="opcoesPrint.papel">
+                    <option value="adesivo">Papel Adesivo</option>
+                    <option value="comum">Papel Comum</option>
+                    <option value="vinil">Vinil</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="orientacao">Orientação</label>
+                  <select id="orientacao" v-model="opcoesPrint.orientacao">
+                    <option value="retrato">Retrato</option>
+                    <option value="paisagem">Paisagem</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Dimensões Personalizadas -->
+              <div v-if="opcoesPrint.formato === 'personalizada'" class="dimensoes-personalizadas">
+                <h5>Dimensões Personalizadas</h5>
+                <div class="dimensoes-grid">
+                  <div class="form-group">
+                    <label for="largura">Largura (cm)</label>
+                    <input 
+                      id="largura" 
+                      type="number" 
+                      step="0.1"
+                      v-model="opcoesPrint.largura"
+                      min="1" 
+                      max="20"
+                    >
+                  </div>
+                  <div class="form-group">
+                    <label for="altura">Altura (cm)</label>
+                    <input 
+                      id="altura" 
+                      type="number" 
+                      step="0.1"
+                      v-model="opcoesPrint.altura"
+                      min="1" 
+                      max="20"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Elementos da Etiqueta -->
+              <div class="elementos-etiqueta">
+                <h5>Elementos da Etiqueta</h5>
+                <div class="elementos-grid">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="opcoesPrint.incluirCodigo">
+                    Código do Ativo
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="opcoesPrint.incluirDescricao">
+                    Descrição
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="opcoesPrint.incluirPatrimonio">
+                    Número do Patrimônio
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="opcoesPrint.incluirCategoria">
+                    Categoria
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="opcoesPrint.incluirLocal">
+                    Localização
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="opcoesPrint.incluirLogo">
+                    Logo da Empresa
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview da Etiqueta -->
+            <div class="etiqueta-preview">
+              <h4>Preview da Etiqueta</h4>
+              <div class="preview-container" :class="opcoesPrint.orientacao">
+                <div class="etiqueta-mock" :style="getEtiquetaStyle()">
+                  <div v-if="opcoesPrint.incluirLogo" class="etiqueta-logo">
+                    <img src="/logo-empresa.png" alt="Logo" />
+                  </div>
+                  
+                  <div class="etiqueta-qr">
+                    <canvas ref="previewQrCanvas" class="preview-qr"></canvas>
+                  </div>
+                  
+                  <div class="etiqueta-info">
+                    <div v-if="opcoesPrint.incluirCodigo" class="info-codigo">
+                      {{ ativo?.codigo }}
+                    </div>
+                    <div v-if="opcoesPrint.incluirDescricao" class="info-descricao">
+                      {{ ativo?.descricao }}
+                    </div>
+                    <div v-if="opcoesPrint.incluirPatrimonio" class="info-patrimonio">
+                      Pat: {{ ativo?.patrimonio }}
+                    </div>
+                    <div v-if="opcoesPrint.incluirCategoria" class="info-categoria">
+                      {{ ativo?.categoria }}
+                    </div>
+                    <div v-if="opcoesPrint.incluirLocal" class="info-local">
+                      {{ ativo?.local?.nome_completo }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="preview-actions">
+                <button class="btn btn-outline" @click="visualizarImpressao">
+                  <i class="fas fa-eye"></i>
+                  Visualizar Impressão
+                </button>
+                <button class="btn btn-primary" @click="imprimir">
+                  <i class="fas fa-print"></i>
+                  Imprimir {{ opcoesPrint.quantidade }} etiqueta(s)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab Configurar -->
+          <div v-if="tabAtiva === 'configurar'" class="tab-content">
+            <div class="config-options">
+              <h4>Configurações do QR Code</h4>
+              
+              <div class="config-grid">
+                <div class="form-group">
+                  <label for="tamanho_qr">Tamanho do QR Code</label>
+                  <select id="tamanho_qr" v-model="configQR.tamanho" @change="regenerarQR">
+                    <option value="200">200x200px</option>
+                    <option value="300">300x300px</option>
+                    <option value="400">400x400px</option>
+                    <option value="500">500x500px</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="nivel_correcao">Nível de Correção</label>
+                  <select id="nivel_correcao" v-model="configQR.nivelCorrecao" @change="regenerarQR">
+                    <option value="L">Baixo (7%)</option>
+                    <option value="M">Médio (15%)</option>
+                    <option value="Q">Alto (25%)</option>
+                    <option value="H">Muito Alto (30%)</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="margem">Margem</label>
+                  <input 
+                    id="margem" 
+                    type="number" 
+                    v-model="configQR.margem"
+                    min="0" 
+                    max="10"
+                    @change="regenerarQR"
+                  >
+                </div>
+                
+                <div class="form-group">
+                  <label for="cor_frente">Cor do QR Code</label>
+                  <input 
+                    id="cor_frente" 
+                    type="color" 
+                    v-model="configQR.corFrente"
+                    @change="regenerarQR"
+                  >
+                </div>
+                
+                <div class="form-group">
+                  <label for="cor_fundo">Cor do Fundo</label>
+                  <input 
+                    id="cor_fundo" 
+                    type="color" 
+                    v-model="configQR.corFundo"
+                    @change="regenerarQR"
+                  >
+                </div>
+              </div>
+
+              <!-- Configurações Avançadas -->
+              <div class="config-avancadas">
+                <h5>Configurações Avançadas</h5>
+                
+                <div class="config-grid">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="configQR.incluirLogo" @change="regenerarQR">
+                    Incluir Logo no Centro
+                  </label>
+                  
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="configQR.bordaArredondada" @change="regenerarQR">
+                    Bordas Arredondadas
+                  </label>
+                  
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="configQR.sombra" @change="regenerarQR">
+                    Adicionar Sombra
+                  </label>
+                </div>
+              </div>
+
+              <!-- URL Personalizada -->
+              <div class="url-personalizada">
+                <h5>URL Personalizada</h5>
+                <div class="form-group">
+                  <label for="url_base">URL Base</label>
+                  <input 
+                    id="url_base" 
+                    type="url" 
+                    v-model="configQR.urlBase"
+                    placeholder="https://sistema.empresa.com/ativo/"
+                    @change="regenerarQR"
+                  >
+                </div>
+                <p class="url-info">
+                  URL completa: {{ configQR.urlBase }}{{ ativo?.codigo }}
+                </p>
+              </div>
+
+              <!-- Ações de Configuração -->
+              <div class="config-actions">
+                <button class="btn btn-outline" @click="resetarConfiguracoes">
+                  <i class="fas fa-undo"></i>
+                  Resetar Padrões
+                </button>
+                <button class="btn btn-outline" @click="salvarConfiguracoes">
+                  <i class="fas fa-save"></i>
+                  Salvar como Padrão
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" @click="$emit('close')">
+          Fechar
+        </button>
+        <button type="button" class="btn btn-primary" @click="baixarTodos">
+          <i class="fas fa-download"></i>
+          Baixar Todos os Formatos
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import QRCode from 'qrcode'
+import { useToast } from '@/composables/useToast'
+
+// Props
+const props = defineProps({
+  ativo: {
+    type: Object,
+    required: true
+  }
+})
+
+// Emits
+const emit = defineEmits(['close'])
+
+// Refs
+const qrCanvas = ref(null)
+const previewQrCanvas = ref(null)
+const tabAtiva = ref('visualizar')
+
+// Estados
+const opcoesPrint = ref({
+  formato: 'media',
+  quantidade: 1,
+  papel: 'adesivo',
+  orientacao: 'retrato',
+  largura: 3,
+  altura: 2,
+  incluirCodigo: true,
+  incluirDescricao: true,
+  incluirPatrimonio: true,
+  incluirCategoria: false,
+  incluirLocal: false,
+  incluirLogo: true
+})
+
+const configQR = ref({
+  tamanho: 300,
+  nivelCorrecao: 'M',
+  margem: 4,
+  corFrente: '#000000',
+  corFundo: '#FFFFFF',
+  incluirLogo: false,
+  bordaArredondada: false,
+  sombra: false,
+  urlBase: 'https://sistema.levitiis.com/ativo/'
+})
+
+// Computed
+const urlAtivo = computed(() => {
+  return `${configQR.value.urlBase}${props.ativo?.codigo}`
+})
+
+// Métodos
+const gerarQRCode = async (canvas, tamanho = 300) => {
+  if (!canvas || !props.ativo) return
+  
+  try {
+    await QRCode.toCanvas(canvas, urlAtivo.value, {
+      width: tamanho,
+      margin: configQR.value.margem,
+      color: {
+        dark: configQR.value.corFrente,
+        light: configQR.value.corFundo
+      },
+      errorCorrectionLevel: configQR.value.nivelCorrecao
+    })
+  } catch (error) {
+    console.error('Erro ao gerar QR Code:', error)
+  }
+}
+
+const regenerarQR = async () => {
+  await nextTick()
+  if (qrCanvas.value) {
+    await gerarQRCode(qrCanvas.value, configQR.value.tamanho)
+  }
+  if (previewQrCanvas.value) {
+    await gerarQRCode(previewQrCanvas.value, 80)
+  }
+}
+
+const baixarQRCode = () => {
+  if (!qrCanvas.value) return
+  
+  const link = document.createElement('a')
+  link.download = `qrcode_${props.ativo.codigo}.png`
+  link.href = qrCanvas.value.toDataURL()
+  link.click()
+}
+
+const copiarLink = async () => {
+  try {
+    await navigator.clipboard.writeText(urlAtivo.value)
+    useToast().showToast('Link copiado para a área de transferência!', 'success')
+  } catch (error) {
+    useToast().showToast('Erro ao copiar link', 'error')
+  }
+}
+
+const compartilhar = async () => {
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `QR Code - ${props.ativo.descricao}`,
+        text: `Acesse as informações do ativo ${props.ativo.codigo}`,
+        url: urlAtivo.value
+      })
+    } catch (error) {
+      console.log('Compartilhamento cancelado')
+    }
+  } else {
+    copiarLink()
+  }
+}
+
+const getEtiquetaStyle = () => {
+  const { formato, largura, altura, orientacao } = opcoesPrint.value
+  
+  let width, height
+  
+  switch (formato) {
+    case 'pequena':
+      width = orientacao === 'retrato' ? '2cm' : '1cm'
+      height = orientacao === 'retrato' ? '1cm' : '2cm'
+      break
+    case 'media':
+      width = orientacao === 'retrato' ? '3cm' : '2cm'
+      height = orientacao === 'retrato' ? '2cm' : '3cm'
+      break
+    case 'grande':
+      width = orientacao === 'retrato' ? '5cm' : '3cm'
+      height = orientacao === 'retrato' ? '3cm' : '5cm'
+      break
+    case 'personalizada':
+      width = orientacao === 'retrato' ? `${largura}cm` : `${altura}cm`
+      height = orientacao === 'retrato' ? `${altura}cm` : `${largura}cm`
+      break
+    default:
+      width = '3cm'
+      height = '2cm'
+  }
+  
+  return {
+    width,
+    height,
+    transform: `scale(${Math.min(300 / parseFloat(width), 200 / parseFloat(height))})`
+  }
+}
+
+const visualizarImpressao = () => {
+  const printWindow = window.open('', '_blank')
+  const etiquetaHtml = gerarHtmlEtiqueta()
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Impressão de Etiqueta - ${props.ativo.codigo}</title>
+      <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        .etiqueta { 
+          border: 1px solid #ccc; 
+          display: inline-block; 
+          margin: 10px;
+          page-break-inside: avoid;
+        }
+        @media print {
+          body { margin: 0; padding: 0; }
+          .etiqueta { margin: 0; border: none; }
+        }
+      </style>
+    </head>
+    <body>
+      ${etiquetaHtml}
+    </body>
+    </html>
+  `)
+  
+  printWindow.document.close()
+}
+
+const imprimir = () => {
+  visualizarImpressao()
+  setTimeout(() => {
+    window.print()
+  }, 500)
+}
+
+const gerarHtmlEtiqueta = () => {
+  // Gerar HTML da etiqueta para impressão
+  const qrDataUrl = qrCanvas.value?.toDataURL() || ''
+  
+  return Array(opcoesPrint.value.quantidade).fill().map(() => `
+    <div class="etiqueta" style="${Object.entries(getEtiquetaStyle()).map(([k, v]) => `${k}: ${v}`).join('; ')}">
+      ${opcoesPrint.value.incluirLogo ? '<img src="/logo-empresa.png" alt="Logo" style="height: 20px;" />' : ''}
+      <img src="${qrDataUrl}" alt="QR Code" style="width: 60px; height: 60px;" />
+      <div>
+        ${opcoesPrint.value.incluirCodigo ? `<div style="font-weight: bold;">${props.ativo.codigo}</div>` : ''}
+        ${opcoesPrint.value.incluirDescricao ? `<div style="font-size: 10px;">${props.ativo.descricao}</div>` : ''}
+        ${opcoesPrint.value.incluirPatrimonio ? `<div style="font-size: 8px;">Pat: ${props.ativo.patrimonio}</div>` : ''}
+        ${opcoesPrint.value.incluirCategoria ? `<div style="font-size: 8px;">${props.ativo.categoria}</div>` : ''}
+        ${opcoesPrint.value.incluirLocal ? `<div style="font-size: 8px;">${props.ativo.local?.nome_completo}</div>` : ''}
+      </div>
+    </div>
+  `).join('')
+}
+
+const resetarConfiguracoes = () => {
+  configQR.value = {
+    tamanho: 300,
+    nivelCorrecao: 'M',
+    margem: 4,
+    corFrente: '#000000',
+    corFundo: '#FFFFFF',
+    incluirLogo: false,
+    bordaArredondada: false,
+    sombra: false,
+    urlBase: 'https://sistema.levitiis.com/ativo/'
+  }
+  regenerarQR()
+}
+
+const salvarConfiguracoes = () => {
+  localStorage.setItem('qr_config', JSON.stringify(configQR.value))
+  useToast().showToast('Configurações salvas como padrão!', 'success')
+}
+
+const baixarTodos = async () => {
+  // Baixar QR Code em diferentes formatos
+  const formatos = ['png', 'svg', 'pdf']
+  
+  for (const formato of formatos) {
+    if (formato === 'png') {
+      baixarQRCode()
+    }
+    // Implementar outros formatos conforme necessário
+  }
+}
+
+// Helpers
+const getCategoriaIcon = (categoria) => {
+  const icons = {
+    'Informática': 'fas fa-laptop',
+    'Móveis': 'fas fa-chair',
+    'Equipamentos': 'fas fa-cogs',
+    'Veículos': 'fas fa-car'
+  }
+  return icons[categoria] || 'fas fa-box'
+}
+
+const getStatusClass = (status) => {
+  const classes = {
+    'ativo': 'status-ativo',
+    'alocado': 'status-alocado',
+    'em_manutencao': 'status-manutencao',
+    'baixado': 'status-baixado'
+  }
+  return classes[status] || 'status-default'
+}
+
+const getStatusLabel = (status) => {
+  const labels = {
+    'ativo': 'Ativo',
+    'alocado': 'Alocado',
+    'em_manutencao': 'Em Manutenção',
+    'baixado': 'Baixado'
+  }
+  return labels[status] || status
+}
+
+const formatarData = (data) => {
+  return new Date(data).toLocaleString('pt-BR')
+}
+
+// Watchers
+watch(() => props.ativo, () => {
+  regenerarQR()
+}, { immediate: true })
+
+// Lifecycle
+onMounted(async () => {
+  // Carregar configurações salvas
+  const configSalva = localStorage.getItem('qr_config')
+  if (configSalva) {
+   try {
+     const parsed = JSON.parse(configSalva)
+     if (parsed && typeof parsed === 'object') {
+       configQR.value = { ...configQR.value, ...parsed }
+     }
+   } catch {
+     // conteúdo inválido: ignora silenciosamente
+   }
+  }
+  
+  await nextTick()
+  await regenerarQR()
+})
+</script>
+
+<style scoped>
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-container {
+  background: var(--surface-color);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-primary);
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-close:hover {
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 24px;
+  max-height: calc(90vh - 140px);
+  overflow-y: auto;
+}
+
+/* Ativo Info */
+.ativo-info {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ativo-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ativo-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.ativo-detalhes h3 {
+  margin: 0 0 4px 0;
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.ativo-detalhes p {
+  margin: 0 0 8px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.ativo-meta {
+  display: flex;
+  gap: 12px;
+}
+
+.categoria {
+  background: var(--info-light);
+  color: var(--info-color);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-ativo {
+  background: var(--success-light);
+  color: var(--success-color);
+}
+
+.status-alocado {
+  background: var(--info-light);
+  color: var(--info-color);
+}
+
+.status-manutencao {
+  background: var(--warning-light);
+  color: var(--warning-color);
+}
+
+.status-baixado {
+  background: var(--danger-light);
+  color: var(--danger-color);
+}
+
+/* Tabs */
+.tabs-container {
+  margin-bottom: 24px;
+}
+
+.tabs-header {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 24px;
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 12px 20px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-button:hover {
+  color: var(--text-primary);
+  background: var(--background-secondary);
+}
+
+.tab-button.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.tab-content {
+  min-height: 400px;
+}
+
+/* QR Preview */
+.qr-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: var(--background-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.qr-canvas {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.qr-info {
+  text-align: center;
+}
+
+.qr-info h4 {
+  margin: 0 0 4px 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.qr-info p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.qr-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* QR Details */
+.qr-details h4 {
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-item span {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.url-text {
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* Print Options */
+.print-options {
+  margin-bottom: 32px;
+}
+
+.print-options h4 {
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.form-group input,
+.form-group select {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.dimensoes-personalizadas {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.dimensoes-personalizadas h5 {
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+}
+
+.dimensoes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.elementos-etiqueta {
+  margin-bottom: 24px;
+}
+
+.elementos-etiqueta h5 {
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+}
+
+.elementos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin: 0;
+}
+
+/* Etiqueta Preview */
+.etiqueta-preview {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid var(--border-color);
+}
+
+.etiqueta-preview h4 {
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.preview-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  margin-bottom: 20px;
+}
+
+.etiqueta-mock {
+  background: white;
+  border: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  gap: 4px;
+  transform-origin: center;
+}
+
+.etiqueta-logo img {
+  height: 16px;
+  object-fit: contain;
+}
+
+.preview-qr {
+  width: 60px !important;
+  height: 60px !important;
+}
+
+.etiqueta-info {
+  text-align: center;
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+.info-codigo {
+  font-weight: bold;
+  font-size: 10px;
+}
+
+.info-descricao {
+  font-size: 7px;
+  margin: 2px 0;
+}
+
+.info-patrimonio,
+.info-categoria,
+.info-local {
+  font-size: 6px;
+  color: #666;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Config Options */
+.config-options h4 {
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+}
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.config-avancadas {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.config-avancadas h5 {
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+}
+
+.url-personalizada {
+  background: var(--info-light);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.url-personalizada h5 {
+  margin: 0 0 16px 0;
+  color: var(--info-color);
+}
+
+.url-info {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.config-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-footer {
+  padding: 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .modal-container {
+    margin: 0;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .tabs-header {
+    flex-wrap: wrap;
+  }
+  
+  .tab-button {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .options-grid,
+  .config-grid,
+  .details-grid,
+  .elementos-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .qr-actions,
+  .preview-actions,
+  .config-actions {
+    flex-direction: column;
+  }
+  
+  .ativo-header {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+</style>

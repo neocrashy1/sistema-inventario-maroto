@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">
+  <defs>
+    <style type="text/css"><![CDATA[
+      .box { fill:#1e293b; stroke:#0ea5e9; stroke-width:2; rx:12; ry:12; }
+      .title { fill:#e2e8f0; font-family:Inter, Arial, sans-serif; font-size:18px; font-weight:bold; }
+      .text { fill:#94a3b8; font-family:Inter, Arial, sans-serif; font-size:14px; }
+      .arrow { stroke:#94a3b8; stroke-width:2; marker-end:url(#arrowHead); }
+      .label { fill:#e5e7eb; font-family:Inter, Arial, sans-serif; font-size:13px; }
+      .group { fill:#0b1220; stroke:#334155; stroke-width:1; rx:16; ry:16; }
+    ]]></style>
+    <marker id="arrowHead" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="500" y="40" text-anchor="middle" class="title">Arquitetura: Agente Python → API REST → Banco → Dashboard React</text>
+
+  <!-- Groups -->
+  <rect x="40" y="80" width="280" height="520" class="group" />
+  <text x="50" y="105" class="label">Cliente (Ambiente das Máquinas)</text>
+
+  <rect x="360" y="80" width="280" height="520" class="group" />
+  <text x="370" y="105" class="label">Servidor (APIs e Segurança)</text>
+
+  <rect x="680" y="80" width="280" height="520" class="group" />
+  <text x="690" y="105" class="label">Persistência e Visualização</text>
+
+  <!-- Agent Python -->
+  <rect x="60" y="140" width="240" height="120" class="box" />
+  <text x="80" y="165" class="title">Agente Python</text>
+  <text x="80" y="190" class="text">• Coleta métricas (CPU, RAM, disco)</text>
+  <text x="80" y="210" class="text">• Inventário de hardware/software</text>
+  <text x="80" y="230" class="text">• Heartbeat e alertas</text>
+
+  <!-- Security (mTLS + JWT) -->
+  <rect x="380" y="140" width="240" height="120" class="box" />
+  <text x="400" y="165" class="title">Segurança</text>
+  <text x="400" y="190" class="text">• TLS 1.2+/mTLS para agente</text>
+  <text x="400" y="210" class="text">• JWT (iss, aud, exp)</text>
+  <text x="400" y="230" class="text">• Rate limiting + CORS</text>
+
+  <!-- REST API Core -->
+  <rect x="380" y="300" width="240" height="120" class="box" />
+  <text x="400" y="325" class="title">API REST (FastAPI)</text>
+  <text x="400" y="350" class="text">• /machines/register</text>
+  <text x="400" y="370" class="text">• /machines/status</text>
+  <text x="400" y="390" class="text">• /tickets/create, /alerts/send</text>
+
+  <!-- Analytics Service -->
+  <rect x="380" y="460" width="240" height="120" class="box" />
+  <text x="400" y="485" class="title">Serviço Analytics</text>
+  <text x="400" y="510" class="text">• /analytics/overview</text>
+  <text x="400" y="530" class="text">• /analytics/machines/top_cpu</text>
+  <text x="400" y="550" class="text">• /analytics/machine/{id}/timeseries</text>
+
+  <!-- Database -->
+  <rect x="700" y="140" width="240" height="160" class="box" />
+  <text x="720" y="165" class="title">Banco de Dados</text>
+  <text x="720" y="190" class="text">• PostgreSQL (prod)</text>
+  <text x="720" y="210" class="text">• SQL Server (compat.)</text>
+  <text x="720" y="230" class="text">• Tabelas: machines, status,</text>
+  <text x="720" y="250" class="text">  tickets, alerts, users</text>
+
+  <!-- Dashboard React -->
+  <rect x="700" y="340" width="240" height="120" class="box" />
+  <text x="720" y="365" class="title">Dashboard React</text>
+  <text x="720" y="390" class="text">• KPIs, gráficos e tabelas</text>
+  <text x="720" y="410" class="text">• Integração com APIs</text>
+
+  <!-- Observability -->
+  <rect x="700" y="500" width="240" height="100" class="box" />
+  <text x="720" y="525" class="title">Observability</text>
+  <text x="720" y="550" class="text">• Logs, métricas, tracing</text>
+
+  <!-- Arrows -->
+  <line x1="300" y1="200" x2="380" y2="200" class="arrow" />
+  <text x="340" y="190" class="label">mTLS + JWT</text>
+
+  <line x1="300" y1="300" x2="380" y2="360" class="arrow" />
+  <text x="320" y="330" class="label">POST /machines/*</text>
+
+  <line x1="620" y1="360" x2="700" y2="220" class="arrow" />
+  <text x="650" y="280" class="label">Persistência</text>
+
+  <line x1="620" y1="520" x2="700" y2="380" class="arrow" />
+  <text x="650" y="440" class="label">Dados analytics</text>
+
+  <line x1="700" y1="400" x2="620" y2="360" class="arrow" />
+  <text x="650" y="360" class="label">GET /api</text>
+
+  <!-- Ports -->
+  <text x="500" y="660" text-anchor="middle" class="text">Portas: API 8000 • Analytics 8001 • Frontend 3000 • TLS/443 em produção</text>
+</svg>

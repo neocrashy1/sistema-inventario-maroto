@@ -1,0 +1,254 @@
+/**
+ * Tema personalizado da Levitiis
+ * Baseado nas cores do site: https://levitiis.com.br/
+ */
+
+// Paleta de cores primárias da Levitiis
+:root {
+  // Cores principais
+  --levitiis-primary: #6366F1;
+  --levitiis-primary-dark: #4F46E5;
+  --levitiis-primary-light: #818CF8;
+  --levitiis-secondary: #8B5CF6;
+  --levitiis-secondary-dark: #7C3AED;
+  --levitiis-secondary-light: #A78BFA;
+  --levitiis-accent: #06B6D4;
+  --levitiis-accent-dark: #0891B2;
+  --levitiis-accent-light: #22D3EE;
+
+  // Cores de status
+  --levitiis-success: #10B981;
+  --levitiis-success-dark: #059669;
+  --levitiis-success-light: #34D399;
+  --levitiis-warning: #F59E0B;
+  --levitiis-warning-dark: #D97706;
+  --levitiis-warning-light: #FBBF24;
+  --levitiis-error: #EF4444;
+  --levitiis-error-dark: #DC2626;
+  --levitiis-error-light: #F87171;
+  --levitiis-info: #3B82F6;
+  --levitiis-info-dark: #2563EB;
+  --levitiis-info-light: #60A5FA;
+
+  // Cores neutras
+  --levitiis-white: #FFFFFF;
+  --levitiis-gray-50: #F8FAFC;
+  --levitiis-gray-100: #F1F5F9;
+  --levitiis-gray-200: #E2E8F0;
+  --levitiis-gray-300: #CBD5E1;
+  --levitiis-gray-400: #94A3B8;
+  --levitiis-gray-500: #64748B;
+  --levitiis-gray-600: #475569;
+  --levitiis-gray-700: #334155;
+  --levitiis-gray-800: #1E293B;
+  --levitiis-gray-900: #0F172A;
+  --levitiis-black: #000000;
+
+  // Cores de fundo
+  --levitiis-background: #FAFAFA;
+  --levitiis-surface: #FFFFFF;
+  --levitiis-surface-variant: #F3F4F6;
+
+  // Gradientes
+  --levitiis-gradient-primary: linear-gradient(135deg, var(--levitiis-primary) 0%, var(--levitiis-secondary) 100%);
+  --levitiis-gradient-accent: linear-gradient(135deg, var(--levitiis-accent) 0%, var(--levitiis-primary) 100%);
+  --levitiis-gradient-success: linear-gradient(135deg, var(--levitiis-success) 0%, var(--levitiis-accent) 100%);
+
+  // Sombras
+  --levitiis-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --levitiis-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --levitiis-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --levitiis-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --levitiis-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  // Border radius
+  --levitiis-radius-sm: 0.375rem;
+  --levitiis-radius: 0.5rem;
+  --levitiis-radius-md: 0.75rem;
+  --levitiis-radius-lg: 1rem;
+  --levitiis-radius-xl: 1.5rem;
+  --levitiis-radius-full: 9999px;
+
+  // Espaçamentos
+  --levitiis-spacing-xs: 0.25rem;
+  --levitiis-spacing-sm: 0.5rem;
+  --levitiis-spacing-md: 1rem;
+  --levitiis-spacing-lg: 1.5rem;
+  --levitiis-spacing-xl: 2rem;
+  --levitiis-spacing-2xl: 3rem;
+
+  // Tipografia
+  --levitiis-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --levitiis-font-size-xs: 0.75rem;
+  --levitiis-font-size-sm: 0.875rem;
+  --levitiis-font-size-base: 1rem;
+  --levitiis-font-size-lg: 1.125rem;
+  --levitiis-font-size-xl: 1.25rem;
+  --levitiis-font-size-2xl: 1.5rem;
+  --levitiis-font-size-3xl: 1.875rem;
+  --levitiis-font-size-4xl: 2.25rem;
+
+  // Transições
+  --levitiis-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --levitiis-transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --levitiis-transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// Tema escuro
+[data-theme="dark"] {
+  --levitiis-background: #0F172A;
+  --levitiis-surface: #1E293B;
+  --levitiis-surface-variant: #334155;
+  --levitiis-primary: #8B5CF6;
+  --levitiis-secondary: #6366F1;
+}
+
+// Classes utilitárias
+.levitiis-gradient-primary {
+  background: var(--levitiis-gradient-primary);
+}
+
+.levitiis-gradient-accent {
+  background: var(--levitiis-gradient-accent);
+}
+
+.levitiis-gradient-success {
+  background: var(--levitiis-gradient-success);
+}
+
+.levitiis-shadow {
+  box-shadow: var(--levitiis-shadow);
+}
+
+.levitiis-shadow-lg {
+  box-shadow: var(--levitiis-shadow-lg);
+}
+
+.levitiis-rounded {
+  border-radius: var(--levitiis-radius);
+}
+
+.levitiis-rounded-lg {
+  border-radius: var(--levitiis-radius-lg);
+}
+
+.levitiis-transition {
+  transition: var(--levitiis-transition);
+}
+
+// Componentes base com tema Levitiis
+.levitiis-card {
+  background: var(--levitiis-surface);
+  border-radius: var(--levitiis-radius-lg);
+  box-shadow: var(--levitiis-shadow);
+  padding: var(--levitiis-spacing-lg);
+  transition: var(--levitiis-transition);
+
+  &:hover {
+    box-shadow: var(--levitiis-shadow-lg);
+    transform: translateY(-2px);
+  }
+}
+
+.levitiis-button {
+  background: var(--levitiis-gradient-primary);
+  border: none;
+  border-radius: var(--levitiis-radius);
+  color: var(--levitiis-white);
+  cursor: pointer;
+  font-weight: 600;
+  padding: var(--levitiis-spacing-sm) var(--levitiis-spacing-lg);
+  transition: var(--levitiis-transition);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--levitiis-shadow-md);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &.secondary {
+    background: var(--levitiis-surface);
+    color: var(--levitiis-primary);
+    border: 2px solid var(--levitiis-primary);
+  }
+
+  &.outline {
+    background: transparent;
+    color: var(--levitiis-primary);
+    border: 2px solid var(--levitiis-primary);
+  }
+}
+
+.levitiis-input {
+  background: var(--levitiis-surface);
+  border: 2px solid var(--levitiis-gray-200);
+  border-radius: var(--levitiis-radius);
+  padding: var(--levitiis-spacing-sm) var(--levitiis-spacing-md);
+  transition: var(--levitiis-transition);
+  width: 100%;
+
+  &:focus {
+    border-color: var(--levitiis-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    outline: none;
+  }
+}
+
+// Animações personalizadas
+@keyframes levitiis-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes levitiis-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes levitiis-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.levitiis-fade-in {
+  animation: levitiis-fade-in 0.5s ease-out;
+}
+
+.levitiis-slide-in {
+  animation: levitiis-slide-in 0.5s ease-out;
+}
+
+.levitiis-pulse {
+  animation: levitiis-pulse 2s infinite;
+}
+
+// Responsividade
+@media (max-width: 768px) {
+  :root {
+    --levitiis-spacing-lg: 1rem;
+    --levitiis-spacing-xl: 1.5rem;
+  }
+  
+  .levitiis-card {
+    padding: var(--levitiis-spacing-md);
+  }
+}

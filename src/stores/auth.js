@@ -1,0 +1,473 @@
+import logger from '@/utils/logger'
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { authAPI } from '../services/api.js'
+import router from '@/router'
+
+export const useAuthStore = defineStore('auth', () => {
+  // State
+  const user = ref(null)
+  const token = ref(localStorage.getItem('access_token') || null)
+  const refreshTokenValue = ref(localStorage.getItem('refresh_token') || null)
+  const permissions = ref([])
+  const role = ref(null)
+  const isLoading = ref(false)
+  const loginAttempts = ref(0)
+  const lastLoginAttempt = ref(null)
+  const sessionTimeout = ref(null)
+
+  // Getters
+  const isAuthenticated = computed(() => !!token.value)
+  const userName = computed(() => {
+    if (!user.value) return ''
+    return user.value.full_name || `${user.value.first_name || ''} ${user.value.last_name || ''}`.trim() || user.value.username || ''
+  })
+  const userEmail = computed(() => user.value?.email || '')
+  const userRole = computed(() => user.value?.role || 'user')
+  const userInitials = computed(() => {
+    if (!user.value) return ''
+    const firstName = user.value.first_name || user.value.username || ''
+    const lastName = user.value.last_name || ''
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
+  })
+
+  const isBlocked = computed(() => {
+    if (loginAttempts.value >= 5 && lastLoginAttempt.value) {
+      const blockTime = 15 * 60 * 1000 // 15 minutos
+      const timeSinceLastAttempt = Date.now() - lastLoginAttempt.value
+      return timeSinceLastAttempt < blockTime
+    }
+    return false
+  })
+
+  const blockTimeRemaining = computed(() => {
+    if (!isBlocked.value) return 0
+    const blockTime = 15 * 60 * 1000 // 15 minutos
+    const timeSinceLastAttempt = Date.now() - lastLoginAttempt.value
+    return Math.max(0, blockTime - timeSinceLastAttempt)
+  })
+
+  // Actions
+  const login = async (credentials) => {
+    if (isBlocked.value) {
+      return {
+        success: false,
+        message: `Muitas tentativas de login. Tente novamente em ${Math.ceil(blockTimeRemaining.value / 60000)} minutos.`
+      }
+    }
+
+    isLoading.value = true
+    
+    try {
+      // Enviar credenciais como JSON para evitar problemas de parsing de multipart
+      const payload = {
+        username: credentials.email || credentials.username,
+        password: credentials.password
+      }
+      const response = await authAPI.login(payload)
+      const data = response.data
+      
+      // Armazenar tokens
+      token.value = data.access_token
+      refreshTokenValue.value = data.refresh_token
+      localStorage.setItem('access_token', data.access_token)
+      localStorage.setItem('refresh_token', data.refresh_token)
+      
+      // Buscar dados do usuário
+      await getCurrentUser()
+      
+      // Resetar tentativas de login
+      loginAttempts.value = 0
+      lastLoginAttempt.value = null
+      
+      // Configurar timeout da sessão
+      setupSessionTimeout()
+      
+      return { success: true, user: user.value }
+    } catch (error) {
+      // Incrementar tentativas de login em caso de erro
+      loginAttempts.value++
+      lastLoginAttempt.value = Date.now()
+      const message = error?.response?.data?.detail || 'Login failed'
+      return { success: false, message }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const register = async (userData) => {
+    isLoading.value = true
+    
+    try {
+      const { data } = await authAPI.register(userData)
+      return {
+        success: true,
+        message: data?.message || 'Conta criada com sucesso!'
+      }
+    } catch (error) {
+      const err = error?.response?.data || {}
+      return {
+        success: false,
+        message: err.detail || err.message || 'Erro ao criar conta',
+        field_errors: err.field_errors
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const forgotPassword = async (email) => {
+    isLoading.value = true
+    
+    try {
+      const { data } = await authAPI.forgotPassword(email)
+      return {
+        success: true,
+        message: data?.message || 'Email de recuperação enviado!'
+      }
+    } catch (error) {
+      const err = error?.response?.data || {}
+      return {
+        success: false,
+        message: err.detail || err.message || 'Erro ao enviar email de recuperação'
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const resetPassword = async (resetToken, newPassword) => {
+    isLoading.value = true
+    
+    try {
+      const { data } = await authAPI.resetPassword(resetToken, newPassword)
+      return {
+        success: true,
+        message: data?.message || 'Senha alterada com sucesso!'
+      }
+    } catch (error) {
+      const err = error?.response?.data || {}
+      return {
+        success: false,
+        message: err.detail || err.message || 'Erro ao alterar senha'
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const updateProfile = async (profileData) => {
+    isLoading.value = true
+    
+    try {
+      const { data } = await authAPI.updateProfile(profileData)
+      const updatedUser = data?.user || data
+      if (updatedUser) {
+        user.value = { ...user.value, ...updatedUser }
+        localStorage.setItem('user', JSON.stringify(user.value))
+      }
+      return {
+        success: true,
+        message: data?.message || 'Perfil atualizado com sucesso!'
+      }
+    } catch (error) {
+      const err = error?.response?.data || {}
+      return {
+        success: false,
+        message: err.detail || err.message || 'Erro ao atualizar perfil'
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const changePassword = async (currentPassword, newPassword) => {
+    isLoading.value = true
+    
+    try {
+      const { data } = await authAPI.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword
+      })
+      return {
+        success: true,
+        message: data?.message || 'Senha alterada com sucesso!'
+      }
+    } catch (error) {
+      const err = error?.response?.data || {}
+      return {
+        success: false,
+        message: err.detail || err.message || 'Erro ao alterar senha'
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const refreshToken = async () => {
+    if (!refreshTokenValue.value) return false
+    
+    try {
+      const { data } = await authAPI.refreshToken(refreshTokenValue.value)
+      token.value = data.access_token
+      localStorage.setItem('access_token', data.access_token)
+      if (data.refresh_token) {
+        refreshTokenValue.value = data.refresh_token
+        localStorage.setItem('refresh_token', data.refresh_token)
+      }
+      setupSessionTimeout()
+      return true
+    } catch (error) {
+      logger.error('Token refresh error:', error)
+      clearAuthData()
+      return false
+    }
+  }
+
+  const getCurrentUser = async () => {
+    try {
+      const response = await authAPI.getCurrentUser()
+      user.value = response.data
+      role.value = response.data.role
+      
+      // Definir permissões baseadas no role
+      if (response.data.role === 'admin') {
+        permissions.value = ['read', 'write', 'delete', 'admin']
+      } else {
+        permissions.value = ['read']
+      }
+      
+      localStorage.setItem('user', JSON.stringify(response.data))
+    } catch (error) {
+      logger.error('Error fetching user data:', error)
+      logout()
+    }
+  }
+
+  const logout = async () => {
+    try {
+      await authAPI.logout()
+    } catch (error) {
+      logger.error('Error during logout:', error)
+    } finally {
+      clearAuthData()
+      // router.push('/auth/login') // Temporariamente desativado
+    }
+  }
+
+  const clearAuthData = () => {
+    user.value = null
+    token.value = null
+    refreshTokenValue.value = null
+    role.value = null
+    permissions.value = []
+
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
+    
+    if (sessionTimeout.value) {
+      clearTimeout(sessionTimeout.value)
+      sessionTimeout.value = null
+    }
+  }
+
+  const setupSessionTimeout = () => {
+    if (sessionTimeout.value) {
+      clearTimeout(sessionTimeout.value)
+    }
+    
+    // Timeout de 2 horas
+    sessionTimeout.value = setTimeout(() => {
+      logout()
+    }, 2 * 60 * 60 * 1000)
+  }
+
+  const initializeAuth = async () => {
+    const storedUser = localStorage.getItem('user')
+    const storedToken = localStorage.getItem('access_token')
+    const storedRefreshToken = localStorage.getItem('refresh_token')
+
+    if (storedUser && storedToken) {
+      try {
+        const userData = (() => { try { return JSON.parse(storedUser) } catch { return null } })()
+        if (!userData || typeof userData !== 'object') {
+          throw new Error('Invalid user JSON')
+        }
+        user.value = userData
+        token.value = storedToken
+        refreshTokenValue.value = storedRefreshToken
+        role.value = userData.role
+        
+        // Definir permissões baseadas no role
+        setPermissionsByRole(userData.role)
+        
+        // Verificar se o token ainda é válido
+        const isValid = await refreshToken()
+        if (!isValid) {
+          await getCurrentUser()
+        }
+        
+        setupSessionTimeout()
+      } catch (error) {
+        logger.error('Error initializing auth:', error)
+        clearAuthData()
+      }
+    } else {
+      const enableAutoLogin = (import.meta.env.VITE_AUTO_LOGIN === 'true' || import.meta.env.VITE_AUTO_LOGIN === true)
+      if (enableAutoLogin) {
+        // Login automático para demonstração
+        logger.debug('🚀 Fazendo login automático para demonstração...')
+        await autoLogin()
+      } else {
+        logger.debug('ℹ️ AutoLogin desabilitado. Faça login manualmente.')
+      }
+    }
+  }
+
+  const autoLogin = async () => {
+    try {
+      const userData = {
+        username: 'admin',
+        email: 'admin@levitiis.com',
+        password: 'admin123',
+        first_name: 'Administrador',
+        last_name: 'Sistema',
+        role: 'MANAGER'
+      }
+
+      try {
+       await authAPI.register(userData, { _skipGlobalErrorHandler: true })
+      } catch (e) {}
+
+      const result = await login({
+        username: userData.username,
+        password: userData.password
+      })
+
+      if (result.success) {
+        logger.debug('✅ Login automático realizado com sucesso!')
+        // Redireciona para o dashboard após login automático
+        router.push('/dashboard')
+      }
+    } catch (error) {
+      logger.error('❌ Erro no login automático:', error)
+    }
+  }
+
+  const setPermissionsByRole = (userRole) => {
+    const rolePermissions = {
+      admin: [
+        'view_dashboard',
+        'manage_users',
+        'manage_machines',
+        'view_reports',
+        'manage_tickets',
+        'system_settings',
+        'view_logs',
+        'export_data',
+        'read', 'write', 'delete', 'admin'
+      ],
+      technician: [
+        'view_dashboard',
+        'manage_machines',
+        'view_reports',
+        'manage_tickets',
+        'view_logs',
+        'read', 'write'
+      ],
+      operator: [
+        'view_dashboard',
+        'view_machines',
+        'create_tickets',
+        'view_reports',
+        'read'
+      ],
+      viewer: [
+        'view_dashboard',
+        'view_machines',
+        'view_reports',
+        'read'
+      ]
+    }
+    
+    permissions.value = rolePermissions[userRole] || ['read']
+  }
+
+  const hasPermission = (permission) => {
+    return permissions.value.includes(permission) || role.value === 'admin'
+  }
+
+  const hasRole = (roleToCheck) => {
+    if (Array.isArray(roleToCheck)) {
+      return roleToCheck.includes(userRole.value)
+    }
+    return userRole.value === roleToCheck
+  }
+
+  const checkPermission = (permission) => {
+    return permissions.value.includes(permission)
+  }
+
+  const canAccessModule = (module) => {
+    const modulePermissions = {
+      dashboard: ['view_dashboard'],
+      monitoring: ['view_dashboard'],
+      inventory: ['view_machines'],
+      tickets: ['create_tickets', 'manage_tickets'],
+      reports: ['view_reports'],
+      analytics: ['view_reports'],
+      admin: ['admin', 'system_settings'],
+      users: ['manage_users'],
+      settings: ['system_settings']
+    }
+
+    const requiredPermissions = modulePermissions[module] || ['read']
+    return requiredPermissions.some(permission => hasPermission(permission))
+  }
+
+  // Initialize auth on store creation
+  initializeAuth()
+
+  return {
+    // State
+    user,
+    token,
+    refreshTokenValue,
+    permissions,
+    role,
+    isLoading,
+    loginAttempts,
+    lastLoginAttempt,
+    sessionTimeout,
+    
+    // Getters
+    isAuthenticated,
+    userName,
+    userEmail,
+    userRole,
+    userInitials,
+    isBlocked,
+    blockTimeRemaining,
+    
+    // Actions
+    login,
+    register,
+    logout,
+    getCurrentUser,
+    initializeAuth,
+    autoLogin,
+    forgotPassword,
+    resetPassword,
+    updateProfile,
+    changePassword,
+    refreshToken,
+    hasPermission,
+    hasRole,
+    checkPermission,
+    canAccessModule,
+    clearAuthData,
+    setupSessionTimeout,
+    setPermissionsByRole
+  }
+})

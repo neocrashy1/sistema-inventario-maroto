@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="700" viewBox="0 0 1100 700">
+  <defs>
+    <style>
+      .box { fill: #f7f9fc; stroke: #2b6cb0; stroke-width: 2; rx: 8; }
+      .title { font: bold 16px sans-serif; fill: #2d3748; }
+      .text { font: 13px sans-serif; fill: #4a5568; }
+      .arrow { stroke: #4a5568; stroke-width: 2; marker-end: url(#arrowHead); }
+      .arrowSecure { stroke: #2b6cb0; stroke-width: 2; marker-end: url(#arrowHead); }
+    </style>
+    <marker id="arrowHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#4a5568" />
+    </marker>
+  </defs>
+
+  <!-- Nginx/Reverse Proxy (TLS) -->
+  <rect class="box" x="420" y="40" width="260" height="90" />
+  <text class="title" x="435" y="65">Nginx / Reverse Proxy</text>
+  <text class="text" x="435" y="90">- TLS 1.2+ (HTTPS)</text>
+  <text class="text" x="435" y="110">- Strict CORS & Rate Limit</text>
+
+  <!-- FastAPI Backend -->
+  <rect class="box" x="400" y="180" width="300" height="190" />
+  <text class="title" x="415" y="205">FastAPI REST API</text>
+  <text class="text" x="415" y="230">- RBAC (admin, gestor, auditor, agent)</text>
+  <text class="text" x="415" y="250">- JWT + Refresh Tokens</text>
+  <text class="text" x="415" y="270">- Endpoints:</text>
+  <text class="text" x="435" y="290">/machines/register</text>
+  <text class="text" x="435" y="310">/machines/status</text>
+  <text class="text" x="435" y="330">/tickets/create</text>
+  <text class="text" x="435" y="350">/alerts/send</text>
+
+  <!-- PostgreSQL DB -->
+  <rect class="box" x="780" y="200" width="260" height="150" />
+  <text class="title" x="795" y="225">PostgreSQL</text>
+  <text class="text" x="795" y="250">- Tabelas: assets, machines,</text>
+  <text class="text" x="795" y="270">  tickets, alerts, asset_audits</text>
+  <text class="text" x="795" y="290">- Índices & Partições por período</text>
+  <text class="text" x="795" y="310">- Alembic migrations</text>
+
+  <!-- Redis -->
+  <rect class="box" x="780" y="380" width="260" height="120" />
+  <text class="title" x="795" y="405">Redis</text>
+  <text class="text" x="795" y="430">- Refresh tokens / sessions</text>
+  <text class="text" x="795" y="450">- Caching / rate limiting</text>
+
+  <!-- Python Agent -->
+  <rect class="box" x="60" y="220" width="280" height="180" />
+  <text class="title" x="75" y="245">Agente Python (Windows/Linux)</text>
+  <text class="text" x="75" y="270">- Registro de máquina</text>
+  <text class="text" x="75" y="290">- Heartbeat & métricas (CPU/Mem/Disk)</text>
+  <text class="text" x="75" y="310">- Inventário de software</text>
+  <text class="text" x="75" y="330">- Assinatura HMAC de payload</text>
+
+  <!-- Frontend Dashboard -->
+  <rect class="box" x="420" y="520" width="260" height="120" />
+  <text class="title" x="435" y="545">Dashboard Web (React/Vue)</text>
+  <text class="text" x="435" y="570">- Gestão de ativos & auditorias</text>
+  <text class="text" x="435" y="590">- Inventário físico (QR Code)</text>
+
+  <!-- Audit Chain Note -->
+  <rect class="box" x="60" y="40" width="320" height="120" />
+  <text class="title" x="75" y="65">Trilha de Auditoria</text>
+  <text class="text" x="75" y="90">- asset_audits com hash encadeado</text>
+  <text class="text" x="75" y="110">- HMAC(signature) + prev_hash</text>
+  <text class="text" x="75" y="130">- Append-only, imutável</text>
+
+  <!-- Arrows: Agent -> Nginx (HTTPS) -> FastAPI -->
+  <line class="arrowSecure" x1="340" y1="280" x2="420" y2="85" />
+  <text class="text" x="345" y="255">HTTPS</text>
+  <line class="arrow" x1="550" y1="130" x2="550" y2="180" />
+
+  <!-- Arrows: Dashboard -> Nginx (HTTPS) -> FastAPI -->
+  <line class="arrowSecure" x1="550" y1="520" x2="550" y2="130" />
+  <text class="text" x="560" y="480">HTTPS</text>
+
+  <!-- Arrows: FastAPI -> PostgreSQL & Redis -->
+  <line class="arrow" x1="700" y1="260" x2="780" y2="260" />
+  <line class="arrow" x1="700" y1="340" x2="780" y2="420" />
+
+  <!-- Arrow: Audit Chain note -> FastAPI -->
+  <line class="arrow" x1="380" y1="100" x2="420" y2="220" />
+
+  <!-- Legend/Notes -->
+  <text class="text" x="60" y="660">Segurança: TLS obrigatório, JWT com Refresh Tokens, CORS estrito, HMAC audit trail, RBAC.</text>
+</svg>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="650" viewBox="0 0 1000 650">
+  <style>
+    .box { fill:#f5f7fa; stroke:#1f2937; stroke-width:2; rx:10; }
+    .title { font: 700 16px 'Segoe UI', Arial, sans-serif; fill:#111827; }
+    .text { font: 400 14px 'Segoe UI', Arial, sans-serif; fill:#374151; }
+    .label { font: 600 14px 'Segoe UI', Arial, sans-serif; fill:#0f766e; }
+    .small { font: 400 12px 'Segoe UI', Arial, sans-serif; fill:#6b7280; }
+    .arrow { stroke:#111827; stroke-width:2; marker-end:url(#arrowHead); }
+  </style>
+  <defs>
+    <marker id="arrowHead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#111827" />
+    </marker>
+  </defs>
+
+  <!-- Python Agent -->
+  <rect x="60" y="70" width="280" height="160" class="box" />
+  <text x="80" y="100" class="title">Agente Python</text>
+  <text x="80" y="130" class="text">• Coleta métricas de máquina</text>
+  <text x="80" y="150" class="text">• Envia alertas e status</text>
+  <text x="80" y="170" class="text">• Registra máquina</text>
+  <text x="80" y="190" class="small">Auth: Token (JWT ou enrollment token)</text>
+
+  <!-- React Dashboard -->
+  <rect x="60" y="380" width="280" height="160" class="box" />
+  <text x="80" y="410" class="title">Dashboard React</text>
+  <text x="80" y="440" class="text">• Visualiza tickets, máquinas, alertas</text>
+  <text x="80" y="460" class="text">• Cria/atualiza tickets</text>
+  <text x="80" y="480" class="small">Comunica via HTTPS + Bearer Token</text>
+
+  <!-- API FastAPI -->
+  <rect x="370" y="200" width="300" height="200" class="box" />
+  <text x="390" y="230" class="title">API REST (FastAPI/Uvicorn)</text>
+  <text x="390" y="260" class="text">Endpoints iniciais:</text>
+  <text x="410" y="280" class="text">• /machines/register</text>
+  <text x="410" y="300" class="text">• /machines/status</text>
+  <text x="410" y="320" class="text">• /tickets/create</text>
+  <text x="410" y="340" class="text">• /alerts/send</text>
+  <text x="390" y="360" class="small">Segurança: TLS direto no Uvicorn + JWT Bearer</text>
+
+  <!-- Database -->
+  <rect x="730" y="220" width="210" height="160" class="box" />
+  <text x="750" y="250" class="title">Banco de Dados</text>
+  <text x="750" y="280" class="text">• PostgreSQL ou SQL Server</text>
+  <text x="750" y="300" class="text">• Persistência de tickets/máquinas</text>
+  <text x="750" y="320" class="small">Conexão segura (credenciais protegidas)</text>
+
+  <!-- Arrows -->
+  <line x1="340" y1="150" x2="370" y2="240" class="arrow" />
+  <text x="345" y="200" class="label">HTTPS (TLS)</text>
+
+  <line x1="340" y1="460" x2="370" y2="360" class="arrow" />
+  <text x="345" y="420" class="label">HTTPS (TLS)</text>
+
+  <line x1="670" y1="300" x2="730" y2="300" class="arrow" />
+  <text x="680" y="285" class="label">ORM/Driver</text>
+
+  <!-- Notes -->
+  <text x="60" y="580" class="small">Observações: Sem proxy reverso — TLS é terminado diretamente no Uvicorn. CORS habilitado para o domínio/app do dashboard.</text>
+</svg>

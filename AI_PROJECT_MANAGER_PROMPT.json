@@ -1,0 +1,93 @@
+{
+  "title": "IA Gerente de Projetos Levitiis",
+  "context": {
+    "project": "Levitiis Vue.js - Sistema de gestão de ativos",
+    "frontend": "Vue.js 3 + Pinia + Vue Router",
+    "backend": "FastAPI + SQLAlchemy + PostgreSQL",
+    "auth": "JWT",
+    "status_score": 85
+  },
+  "improvements": [
+    {
+      "priority": "alta",
+      "items": [
+        {
+          "id": 1,
+          "title": "Loading States Consistentes",
+          "problem": "UX inconsistente durante operações assíncronas",
+          "impact": "Usuários não sabem se sistema está processando",
+          "agent": "Frontend UX Specialist",
+          "estimated_hours": "2-3",
+          "files_affected": ["src/components/**", "src/views/**"]
+        },
+        {
+          "id": 2,
+          "title": "Validação de Formulários Robusta",
+          "problem": "Validação básica apenas com required",
+          "impact": "Dados inválidos podem ser enviados à API",
+          "agent": "Frontend Validation Expert",
+          "estimated_hours": "3-4",
+          "files_affected": ["src/views/auth/Login.vue", "src/views/assets/Assets.vue"]
+        },
+        {
+          "id": 3,
+          "title": "Tratamento de Erros Global",
+          "problem": "Erros tratados de forma inconsistente",
+          "impact": "UX ruim quando operações falham",
+          "agent": "Frontend Architecture Specialist",
+          "estimated_hours": "2-3",
+          "files_affected": ["src/plugins/**", "src/services/api.js"]
+        }
+      ]
+    },
+    {
+      "priority": "media",
+      "items": [
+        {"id":4, "title":"Limpeza de console.log", "agent":"Code Quality Specialist", "estimated_hours":"1", "files_affected":["src/**/*.vue","src/**/*.js"]},
+        {"id":5, "title":"Lazy Loading de Componentes", "agent":"Performance Optimization Expert", "estimated_hours":"2-3", "files_affected":["src/router/index.js","src/views/**"]},
+        {"id":6, "title":"Testes Unitários", "agent":"QA Testing Specialist", "estimated_hours":"4-6", "files_affected":["src/components/**","src/stores/**"]},
+        {"id":7, "title":"Cache Inteligente de API", "agent":"Backend Performance Expert", "estimated_hours":"3-4", "files_affected":["src/services/**","backend/app/services/**"]}
+      ]
+    },
+    {
+      "priority": "baixa",
+      "items": [
+        {"id":8, "title":"Melhorias de Acessibilidade", "agent":"Accessibility Specialist", "estimated_hours":"4-5", "files_affected":["src/components/**","src/views/**"]}
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "name": "Frontend UX Specialist",
+      "responsibilities": ["Criar componentes de loading reutilizáveis","Implementar skeletons","Adicionar spinners em botões"],
+      "priority_files": ["src/components/common/LoadingSpinner.vue","src/components/common/SkeletonLoader.vue","src/views/assets/Assets.vue","src/views/Dashboard.vue"]
+    },
+    {
+      "name": "Frontend Validation Expert",
+      "responsibilities": ["Implementar biblioteca de validação","Criar validações customizadas","Feedback visual para campos inválidos"],
+      "priority_files": ["src/utils/validation.js","src/composables/useValidation.js","src/views/auth/Login.vue"]
+    },
+    {
+      "name": "Frontend Architecture Specialist",
+      "responsibilities": ["Implementar sistema global de notificações","Criar interceptors de erro","Padronizar tratamento de erros"],
+      "priority_files": ["src/plugins/notifications.js","src/components/common/ToastNotification.vue","src/utils/errorHandler.js","src/services/api.js"]
+    }
+  ],
+  "sprints": [
+    {"name":"Sprint 1 - Fundação UX","tasks":["Loading States","Validação de Formulários","Sistema de Notificações"],"duration_days":5},
+    {"name":"Sprint 2 - Qualidade e Performance","tasks":["Limpeza de console.log","Lazy Loading","Testes Unitários"],"duration_days":5},
+    {"name":"Sprint 3 - Otimização Avançada","tasks":["Cache de API","Acessibilidade"],"duration_days":5}
+  ],
+  "success_criteria": {
+    "performance_percent_target": "90%",
+    "ux_percent_target": "95%",
+    "tests_coverage_target": "70%",
+    "kpis": ["0 console.log em produção","Loading states em 100% das operações async","Validação robusta em 100% dos formulários","Sistema global de notificações funcionando","Lazy loading implementado"]
+  },
+  "verification_commands": [
+    "npm run dev  # Frontend",
+    "python main.py  # Backend",
+    "npm run test",
+    "npm run build"
+  ]
+}

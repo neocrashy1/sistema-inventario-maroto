@@ -1,0 +1,44 @@
+[
+  {
+    "test": "Alert Creation",
+    "status": "FAIL",
+    "details": "HTTP 405",
+    "timestamp": "2025-10-01T10:44:06.873465"
+  },
+  {
+    "test": "Alert Filtering - Severity",
+    "status": "FAIL",
+    "details": "HTTP 422",
+    "timestamp": "2025-10-01T10:44:08.892353"
+  },
+  {
+    "test": "Auto Ticket Creation",
+    "status": "FAIL",
+    "details": "HTTP 405",
+    "timestamp": "2025-10-01T10:44:10.920863"
+  },
+  {
+    "test": "Alert Escalation",
+    "status": "FAIL",
+    "details": "HTTP 405",
+    "timestamp": "2025-10-01T10:44:12.939002"
+  },
+  {
+    "test": "Notification System",
+    "status": "FAIL",
+    "details": "HTTP 404",
+    "timestamp": "2025-10-01T10:44:14.993557"
+  },
+  {
+    "test": "Alert Metrics",
+    "status": "FAIL",
+    "details": "'list' object has no attribute 'values'",
+    "timestamp": "2025-10-01T10:44:17.038163"
+  },
+  {
+    "test": "Alert Performance",
+    "status": "WARN",
+    "details": "Slow response time: 2.05s",
+    "timestamp": "2025-10-01T10:44:27.289883"
+  }
+]

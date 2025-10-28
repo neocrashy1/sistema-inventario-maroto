@@ -1,0 +1,401 @@
+import logger from '@/utils/logger'
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { useAssetsStore } from './assets'
+import { useServiceOrdersStore } from './serviceOrders'
+import { useEmployeeLoansStore } from './employeeLoans'
+import { useThirdPartyLoansStore } from './thirdPartyLoans'
+import { usePhysicalInventoryStore } from './physicalInventory'
+import { useAuditsStore } from './audits'
+
+export const useReportsStore = defineStore('reports', () => {
+  // Estado reativo
+  const loading = ref(false)
+  const error = ref(null)
+  const selectedDateRange = ref({
+    start: new Date(new Date().getFullYear(), new Date().getMonth() - 6, 1),
+    end: new Date()
+  })
+  
+  // Tipos de relatórios disponíveis
+  const reportTypes = ref([
+    {
+      id: 'assets-overview',
+      name: 'Visão Geral de Ativos',
+      description: 'Relatório completo sobre todos os ativos',
+      category: 'assets',
+      icon: 'fas fa-boxes',
+      color: 'primary'
+    },
+    {
+      id: 'assets-by-category',
+      name: 'Ativos por Categoria',
+      description: 'Distribuição de ativos por categoria',
+      category: 'assets',
+      icon: 'fas fa-chart-pie',
+      color: 'info'
+    },
+    {
+      id: 'assets-by-location',
+      name: 'Ativos por Localização',
+      description: 'Distribuição de ativos por localização',
+      category: 'assets',
+      icon: 'fas fa-map-marker-alt',
+      color: 'success'
+    },
+    {
+      id: 'assets-depreciation',
+      name: 'Depreciação de Ativos',
+      description: 'Análise de depreciação e valor atual',
+      category: 'financial',
+      icon: 'fas fa-chart-line',
+      color: 'warning'
+    },
+    {
+      id: 'maintenance-summary',
+      name: 'Resumo de Manutenções',
+      description: 'Ordens de serviço e custos de manutenção',
+      category: 'maintenance',
+      icon: 'fas fa-tools',
+      color: 'danger'
+    },
+    {
+      id: 'loans-report',
+      name: 'Relatório de Empréstimos',
+      description: 'Empréstimos para funcionários e terceiros',
+      category: 'loans',
+      icon: 'fas fa-handshake',
+      color: 'secondary'
+    },
+    {
+      id: 'inventory-audit',
+      name: 'Auditoria de Inventário',
+      description: 'Resultados de inventários físicos',
+      category: 'audit',
+      icon: 'fas fa-clipboard-check',
+      color: 'dark'
+    },
+    {
+      id: 'warranty-expiration',
+      name: 'Vencimento de Garantias',
+      description: 'Garantias próximas ao vencimento',
+      category: 'warranty',
+      icon: 'fas fa-shield-alt',
+      color: 'warning'
+    }
+  ])
+
+  // Relatórios gerados
+  const generatedReports = ref([
+    {
+      id: 'rpt-001',
+      name: 'Relatório Mensal de Ativos - Janeiro 2024',
+      type: 'assets-overview',
+      generatedAt: new Date('2024-01-31'),
+      generatedBy: 'Admin',
+      status: 'completed',
+      format: 'PDF',
+      size: '2.3 MB',
+      downloadUrl: '#'
+    },
+    {
+      id: 'rpt-002',
+      name: 'Análise de Depreciação - Q4 2023',
+      type: 'assets-depreciation',
+      generatedAt: new Date('2024-01-15'),
+      generatedBy: 'Financeiro',
+      status: 'completed',
+      format: 'Excel',
+      size: '1.8 MB',
+      downloadUrl: '#'
+    },
+    {
+      id: 'rpt-003',
+      name: 'Relatório de Manutenções - Dezembro 2023',
+      type: 'maintenance-summary',
+      generatedAt: new Date('2024-01-05'),
+      generatedBy: 'Técnico',
+      status: 'processing',
+      format: 'PDF',
+      size: null,
+      downloadUrl: null
+    }
+  ])
+
+  // Filtros
+  const filters = ref({
+    category: '',
+    status: '',
+    dateRange: 'last-30-days',
+    format: '',
+    generatedBy: ''
+  })
+
+  // Stores externos
+  const assetsStore = useAssetsStore()
+  const serviceOrdersStore = useServiceOrdersStore()
+  const employeeLoansStore = useEmployeeLoansStore()
+  const thirdPartyLoansStore = useThirdPartyLoansStore()
+  const physicalInventoryStore = usePhysicalInventoryStore()
+  const auditsStore = useAuditsStore()
+
+  // Getters computados
+  const reportCategories = computed(() => {
+    const categories = [...new Set(reportTypes.value.map(type => type.category))]
+    return categories.map(category => ({
+      id: category,
+      name: getCategoryName(category),
+      count: reportTypes.value.filter(type => type.category === category).length
+    }))
+  })
+
+  const filteredReports = computed(() => {
+    let filtered = generatedReports.value
+
+    if (filters.value.category) {
+      const categoryTypes = reportTypes.value
+        .filter(type => type.category === filters.value.category)
+        .map(type => type.id)
+      filtered = filtered.filter(report => categoryTypes.includes(report.type))
+    }
+
+    if (filters.value.status) {
+      filtered = filtered.filter(report => report.status === filters.value.status)
+    }
+
+    if (filters.value.format) {
+      filtered = filtered.filter(report => report.format === filters.value.format)
+    }
+
+    if (filters.value.generatedBy) {
+      filtered = filtered.filter(report => 
+        report.generatedBy.toLowerCase().includes(filters.value.generatedBy.toLowerCase())
+      )
+    }
+
+    return filtered
+  })
+
+  const reportStatistics = computed(() => ({
+    total: generatedReports.value.length,
+    completed: generatedReports.value.filter(r => r.status === 'completed').length,
+    processing: generatedReports.value.filter(r => r.status === 'processing').length,
+    failed: generatedReports.value.filter(r => r.status === 'failed').length,
+    totalSize: generatedReports.value
+      .filter(r => r.size)
+      .reduce((total, r) => total + parseFloat(r.size), 0)
+      .toFixed(1)
+  }))
+
+  // Dados para analytics
+  const analyticsData = computed(() => ({
+    assetsOverview: {
+      totalAssets: assetsStore.totalAssets,
+      totalValue: assetsStore.totalValue,
+      byCategory: assetsStore.assetsByCategory,
+      byStatus: assetsStore.assetsByStatus,
+      byLocation: assetsStore.assetsByLocation,
+      depreciation: calculateDepreciation()
+    },
+    maintenance: {
+      totalOrders: serviceOrdersStore.totalOrders,
+      ordersInProgress: serviceOrdersStore.ordersInProgress,
+      completedOrders: serviceOrdersStore.completedOrders,
+      averageResolutionTime: serviceOrdersStore.averageResolutionTime,
+      totalCost: serviceOrdersStore.totalCost,
+      byType: serviceOrdersStore.ordersByType,
+      byPriority: serviceOrdersStore.ordersByPriority
+    },
+    loans: {
+      employee: {
+        total: employeeLoansStore.totalLoans,
+        active: employeeLoansStore.activeLoans.length,
+        overdue: employeeLoansStore.overdueLoans.length,
+        byDepartment: employeeLoansStore.loansByDepartment
+      },
+      thirdParty: {
+        total: thirdPartyLoansStore.totalLoans,
+        active: thirdPartyLoansStore.activeLoans.length,
+        overdue: thirdPartyLoansStore.overdueLoans.length,
+        byType: thirdPartyLoansStore.loansByType
+      }
+    },
+    inventory: {
+      totalInventories: physicalInventoryStore.totalInventories,
+      activeInventories: physicalInventoryStore.activeInventories.length,
+      completedInventories: physicalInventoryStore.completedInventories.length,
+      totalDiscrepancies: physicalInventoryStore.totalDiscrepancies
+    },
+    audits: {
+      totalAudits: auditsStore.totalAudits,
+      activeAudits: auditsStore.activeAudits.length,
+      completedAudits: auditsStore.completedAudits.length,
+      auditsWithIssues: auditsStore.auditsWithIssues.length
+    }
+  }))
+
+  // Ações
+  const generateReport = async (reportTypeId, options = {}) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const reportType = reportTypes.value.find(type => type.id === reportTypeId)
+      if (!reportType) {
+        throw new Error('Tipo de relatório não encontrado')
+      }
+
+      // Simular geração de relatório
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      const newReport = {
+        id: `rpt-${Date.now()}`,
+        name: `${reportType.name} - ${new Date().toLocaleDateString('pt-BR')}`,
+        type: reportTypeId,
+        generatedAt: new Date(),
+        generatedBy: 'Usuário Atual',
+        status: 'completed',
+        format: options.format || 'PDF',
+        size: `${(Math.random() * 3 + 0.5).toFixed(1)} MB`,
+        downloadUrl: '#'
+      }
+
+      generatedReports.value.unshift(newReport)
+      return newReport
+
+    } catch (err) {
+      error.value = 'Erro ao gerar relatório: ' + err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteReport = (reportId) => {
+    const index = generatedReports.value.findIndex(report => report.id === reportId)
+    if (index !== -1) {
+      generatedReports.value.splice(index, 1)
+    }
+  }
+
+  const downloadReport = (reportId) => {
+    const report = generatedReports.value.find(r => r.id === reportId)
+    if (report && report.downloadUrl) {
+      // Simular download
+      logger.debug(`Downloading report: ${report.name}`)
+      // window.open(report.downloadUrl, '_blank')
+    }
+  }
+
+  const exportReportsList = (format = 'csv') => {
+    const data = filteredReports.value.map(report => ({
+      Nome: report.name,
+      Tipo: reportTypes.value.find(t => t.id === report.type)?.name || report.type,
+      'Data de Geração': report.generatedAt.toLocaleDateString('pt-BR'),
+      'Gerado Por': report.generatedBy,
+      Status: report.status,
+      Formato: report.format,
+      Tamanho: report.size || 'N/A'
+    }))
+
+    if (format === 'csv') {
+      const csv = convertToCSV(data)
+      downloadCSV(csv, 'relatorios.csv')
+    }
+  }
+
+  const updateFilters = (newFilters) => {
+    filters.value = { ...filters.value, ...newFilters }
+  }
+
+  const clearFilters = () => {
+    filters.value = {
+      category: '',
+      status: '',
+      dateRange: 'last-30-days',
+      format: '',
+      generatedBy: ''
+    }
+  }
+
+  // Funções auxiliares
+  const getCategoryName = (category) => {
+    const names = {
+      assets: 'Ativos',
+      financial: 'Financeiro',
+      maintenance: 'Manutenção',
+      loans: 'Empréstimos',
+      audit: 'Auditoria',
+      warranty: 'Garantias'
+    }
+    return names[category] || category
+  }
+
+  const calculateDepreciation = () => {
+    // Simular cálculo de depreciação
+    return {
+      totalDepreciated: 125000,
+      monthlyDepreciation: 8500,
+      averageAge: 2.3,
+      assetsNearEndOfLife: 12
+    }
+  }
+
+  const convertToCSV = (data) => {
+    if (!data.length) return ''
+    
+    const headers = Object.keys(data[0])
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => 
+        headers.map(header => {
+          const value = row[header]
+          return typeof value === 'string' && value.includes(',') 
+            ? `"${value}"` 
+            : value
+        }).join(',')
+      )
+    ].join('\n')
+    
+    return csvContent
+  }
+
+  const downloadCSV = (csvContent, filename) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', filename)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+  }
+
+  return {
+    // Estado
+    loading,
+    error,
+    selectedDateRange,
+    reportTypes,
+    generatedReports,
+    filters,
+    
+    // Getters
+    reportCategories,
+    filteredReports,
+    reportStatistics,
+    analyticsData,
+    
+    // Ações
+    generateReport,
+    deleteReport,
+    downloadReport,
+    exportReportsList,
+    updateFilters,
+    clearFilters
+  }
+})

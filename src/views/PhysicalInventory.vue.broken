@@ -1,0 +1,1972 @@
+<template>
+  <div class="physical-inventory">
+    <!-- Cabeçalho -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-text">
+          <h1 class="page-title">Inventário Físico</h1>
+          <p class="page-subtitle">Gerencie contagens e verificações físicas de ativos</p>
+        </div>
+        <div class="header-actions">
+          <button 
+            class="btn btn-outline"
+            @click="exportInventories"
+            :disabled="loading"
+          >
+            <i class="fas fa-download"></i>
+            Exportar
+          </button>
+          <button 
+            class="btn btn-primary"
+            @click="showNewInventoryModal = true"
+          >
+            <i class="fas fa-plus"></i>
+            Novo Inventário
+          </button>
+          <button 
+            class="btn btn-success"
+            @click="createInventoryAudit"
+          >
+            <i class="fas fa-clipboard-check"></i>
+            Nova Auditoria
+          </button>
+          <button 
+            class="btn btn-outline"
+            @click="goToAudits"
+          >
+            <i class="fas fa-search"></i>
+            Ver Auditorias
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards de Estatísticas -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <i class="fas fa-clipboard-list"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ totalInventories }}</div>
+          <div class="stat-label">Total de Inventários</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon active">
+          <i class="fas fa-play-circle"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ activeInventories.length }}</div>
+          <div class="stat-label">Em Andamento</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon counted">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ totalAssetsCounted }}</div>
+          <div class="stat-label">Ativos Contados</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon discrepancy">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ totalDiscrepancies }}</div>
+          <div class="stat-label">Discrepâncias</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon assets">
+          <i class="fas fa-boxes"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ assetsStore?.totalAssets || 0 }}</div>
+          <div class="stat-label">Ativos Disponíveis</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon warranty-active">
+          <i class="fas fa-shield-alt"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ assetsStore?.assetsByWarrantyStatus?.['Ativa'] || 0 }}</div>
+          <div class="stat-label">Garantias Ativas</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon warranty-expiring">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ assetsStore?.expiredWarranties?.length || 0 }}</div>
+          <div class="stat-label">Garantias Expirando</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon value">
+          <i class="fas fa-dollar-sign"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ formatCurrency(assetsStore?.totalValue || 0) }}</div>
+          <div class="stat-label">Valor Total</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-section">
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label>Buscar</label>
+          <input 
+            type="text" 
+            v-model="searchQuery"
+            placeholder="Código, descrição, responsável..."
+            class="form-input"
+          >
+        </div>
+        
+        <div class="filter-group">
+          <label>Status</label>
+          <select v-model="statusFilter" class="form-select">
+            <option value="">Todos os Status</option>
+            <option value="Planejado">Planejado</option>
+            <option value="Em Andamento">Em Andamento</option>
+            <option value="Concluído">Concluído</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>Localização</label>
+          <select v-model="locationFilter" class="form-select">
+            <option value="">Todas as Localizações</option>
+            <option 
+              v-for="location in locations" 
+              :key="location.id"
+              :value="location.id"
+            >
+              {{ location.name }}
+            </option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>Período</label>
+          <div class="date-range">
+            <input 
+              type="date" 
+              v-model="dateRangeStart"
+              class="form-input"
+            >
+            <span>até</span>
+            <input 
+              type="date" 
+              v-model="dateRangeEnd"
+              class="form-input"
+            >
+          </div>
+        </div>
+        
+        <div class="filter-actions">
+          <button 
+            class="btn btn-outline btn-sm"
+            @click="clearFilters"
+          >
+            Limpar Filtros
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contador de Resultados -->
+    <div class="results-info">
+      <span>{{ filteredInventories.length }} inventário(s) encontrado(s)</span>
+    </div>
+
+    <!-- Tabela de Inventários -->
+    <div class="table-container">
+      <!-- Loading State -->
+      <LoadingState 
+        v-if="isLoading" 
+        message="Carregando inventários..." 
+        :overlay="true" 
+      />
+      
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>
+              <input 
+                type="checkbox" 
+                v-model="selectAll"
+                @change="toggleSelectAll"
+              >
+            </th>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th>Localização</th>
+            <th>Responsável</th>
+            <th>Data Início</th>
+            <th>Data Fim</th>
+            <th>Status</th>
+            <th>Progresso</th>
+            <th>Discrepâncias</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="inventory in paginatedInventories" :key="inventory.id">
+            <td>
+              <input 
+                type="checkbox" 
+                v-model="selectedInventories"
+                :value="inventory.id"
+              >
+            </td>
+            <td>
+              <span class="code">{{ inventory.code }}</span>
+            </td>
+            <td>
+              <div class="inventory-info">
+                <div class="description">{{ inventory.description }}</div>
+                <div class="type">{{ inventory.type }}</div>
+              </div>
+            </td>
+            <td>
+              <div class="location-info">
+                <div class="name">{{ inventory.location.name }}</div>
+                <div class="code">{{ inventory.location.code }}</div>
+              </div>
+            </td>
+            <td>
+              <div class="responsible-info">
+                <div class="name">{{ inventory.responsible.name }}</div>
+                <div class="email">{{ inventory.responsible.email }}</div>
+              </div>
+            </td>
+            <td>{{ formatDate(inventory.startDate) }}</td>
+            <td>{{ formatDate(inventory.endDate) }}</td>
+            <td>
+              <span 
+                class="status-badge"
+                :class="getStatusClass(inventory.status)"
+              >
+                {{ inventory.status }}
+              </span>
+            </td>
+            <td>
+              <div class="progress-container">
+                <div class="progress-bar">
+                  <div 
+                    class="progress-fill"
+                    :style="{ width: inventory.progress + '%' }"
+                  ></div>
+                </div>
+                <span class="progress-text">{{ inventory.progress }}%</span>
+              </div>
+            </td>
+            <td>
+              <span 
+                class="discrepancy-badge"
+                :class="inventory.discrepancies > 0 ? 'has-discrepancy' : 'no-discrepancy'"
+              >
+                {{ inventory.discrepancies }}
+              </span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button 
+                  class="btn btn-sm btn-primary"
+                  @click="viewInventoryDetails(inventory)"
+                  title="Ver Detalhes"
+                >
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button 
+                  v-if="inventory.status === 'Em Andamento'"
+                  class="btn btn-sm btn-success"
+                  @click="openCountingModal(inventory)"
+                  title="Registrar Contagem"
+                >
+                  <i class="fas fa-calculator"></i>
+                </button>
+                <button 
+                  v-if="inventory.status !== 'Concluído'"
+                  class="btn btn-sm btn-outline"
+                  @click="editInventory(inventory)"
+                  title="Editar"
+                >
+                  <i class="fas fa-edit"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginação -->
+    <div class="pagination-container">
+      <div class="pagination-info">
+        Mostrando {{ startIndex + 1 }} a {{ endIndex }} de {{ filteredInventories.length }} registros
+      </div>
+      <div class="pagination">
+        <button 
+          class="btn btn-sm btn-outline"
+          @click="currentPage--"
+          :disabled="currentPage === 1"
+        >
+          Anterior
+        </button>
+        <span class="page-info">{{ currentPage }} de {{ totalPages }}</span>
+        <button 
+          class="btn btn-sm btn-outline"
+          @click="currentPage++"
+          :disabled="currentPage === totalPages"
+        >
+          Próxima
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Novo Inventário -->
+    <div v-if="showNewInventoryModal" class="modal-overlay" @click="closeNewInventoryModal">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3>Novo Inventário Físico</h3>
+          <button class="modal-close" @click="closeNewInventoryModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <form @submit.prevent="createInventory">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Descrição *</label>
+                <input 
+                  type="text" 
+                  v-model="newInventory.description"
+                  class="form-input"
+                  required
+                  placeholder="Descrição do inventário"
+                >
+              </div>
+              
+              <div class="form-group">
+                <label>Tipo *</label>
+                <select v-model="newInventory.type" class="form-select" required>
+                  <option value="">Selecione o tipo</option>
+                  <option value="Geral">Inventário Geral</option>
+                  <option value="Parcial">Inventário Parcial</option>
+                  <option value="Cíclico">Inventário Cíclico</option>
+                  <option value="Emergencial">Inventário Emergencial</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Localização *</label>
+                <select v-model="newInventory.locationId" class="form-select" required>
+                  <option value="">Selecione a localização</option>
+                  <option 
+                    v-for="location in locations" 
+                    :key="location.id"
+                    :value="location.id"
+                  >
+                    {{ location.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Responsável *</label>
+                <select v-model="newInventory.responsibleId" class="form-select" required>
+                  <option value="">Selecione o responsável</option>
+                  <option 
+                    v-for="user in users" 
+                    :key="user.id"
+                    :value="user.id"
+                  >
+                    {{ user.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Data de Início *</label>
+                <input 
+                  type="date" 
+                  v-model="newInventory.startDate"
+                  class="form-input"
+                  required
+                >
+              </div>
+              
+              <div class="form-group">
+                <label>Data de Fim *</label>
+                <input 
+                  type="date" 
+                  v-model="newInventory.endDate"
+                  class="form-input"
+                  required
+                >
+              </div>
+              
+              <div class="form-group full-width">
+                <label>Observações</label>
+                <textarea 
+                  v-model="newInventory.notes"
+                  class="form-textarea"
+                  rows="3"
+                  placeholder="Observações sobre o inventário..."
+                ></textarea>
+              </div>
+            </div>
+            
+            <div class="modal-actions">
+              <button type="button" class="btn btn-outline" @click="closeNewInventoryModal">
+                Cancelar
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="loading">
+                {{ loading ? 'Criando...' : 'Criar Inventário' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Registrar Contagem -->
+    <div v-if="showCountingModal" class="modal-overlay" @click="closeCountingModal">
+      <div class="modal large" @click.stop>
+        <div class="modal-header">
+          <h3>Registrar Contagem - {{ selectedInventory?.code }}</h3>
+          <button class="modal-close" @click="closeCountingModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="counting-section">
+            <div class="section-header">
+              <h4>Ativos para Contagem</h4>
+              <div class="counting-stats">
+                <span class="stat">
+                  <strong>{{ countingAssets.filter(a => a.counted).length }}</strong> / {{ countingAssets.length }} contados
+                </span>
+              </div>
+            </div>
+            
+            <!-- Scanner de QR Code -->
+            <div class="scanner-section">
+              <div class="section-header">
+                <h4>Scanner de QR Code</h4>
+                <div class="scanner-actions">
+                  <button type="button" class="btn btn-outline" @click="toggleScanner">
+                    {{ scanning ? 'Parar Scanner' : 'Iniciar Scanner' }}
+                  </button>
+                  <label class="switch" title="Modo offline">
+                    <input type="checkbox" v-model="offlineMode">
+                    <span class="slider"></span>
+                    <small>Offline</small>
+                  </label>
+                  <select v-model="selectedCameraId" class="form-select" @change="switchCamera">
+                    <option 
+                      v-for="cam in cameras" 
+                      :key="cam.id || cam.index" 
+                      :value="cam.id"
+                    >
+                      {{ cam.label || ('Câmera ' + cam.index) }}
+                    </option>
+                  </select>
+                  <span v-if="lastScanCode" class="text-muted">Último: {{ lastScanCode }}</span>
+                  <span v-if="scanError" class="text-danger">{{ scanError }}</span>
+                  <span v-if="offlineScans?.length" class="badge badge-warning" title="Leituras na fila offline">
+                    Offline: {{ offlineScans.length }}
+                  </span>
+                  <button type="button" class="btn btn-outline" v-if="offlineScans?.length" @click="reconcileOfflineScans">
+                    Reconciliar agora
+                  </button>
+                </div>
+              </div>
+              <div class="scanner-body">
+                <div class="video-container">
+                  <video ref="qrVideo" muted playsinline></video>
+                </div>
+                <div class="manual-entry">
+                  <div class="form-group">
+                    <label>Entrada manual</label>
+                    <div class="manual-row">
+                      <input 
+                        type="text" 
+                        v-model="manualCode" 
+                        class="form-input" 
+                        placeholder="Digite o código do ativo"
+                      >
+                      <button type="button" class="btn btn-primary" @click="manualScan">
+                        <i class="fas fa-qrcode"></i>
+                        Ler
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="assets-list">
+              <div 
+                v-for="asset in countingAssets" 
+                :key="asset.id"
+                class="asset-item"
+                :class="{ 'counted': asset.counted, 'discrepancy': asset.hasDiscrepancy }"
+              >
+                <div class="asset-info">
+                  <div class="asset-header">
+                    <div class="asset-code">{{ asset.tag }}</div>
+                    <div class="asset-name">{{ asset.name }}</div>
+                  </div>
+                  <div class="asset-details">
+                    <div class="detail-row">
+                      <span class="label">Marca/Modelo:</span>
+                      <span class="value">{{ asset.brand }} {{ asset.model }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="label">Série:</span>
+                      <span class="value">{{ asset.serialNumber }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="label">Localização:</span>
+                      <span class="value">{{ asset.location }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="label">Departamento:</span>
+                      <span class="value">{{ asset.department }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="label">Garantia:</span>
+                      <span class="warranty-status" :class="getWarrantyStatusClass(asset.warranty)">
+                        {{ asset.warranty?.status || 'N/A' }}
+                        <small v-if="asset.warranty?.endDate"> - {{ formatDate(asset.warranty.endDate) }}</small>
+                      </span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="label">Valor:</span>
+                      <span class="value">{{ formatCurrency(asset.value) }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="counting-controls">
+                  <div class="form-group">
+                    <label>Status</label>
+                    <select 
+                      v-model="asset.countStatus"
+                      class="form-select"
+                      @change="updateAssetCount(asset)"
+                    >
+                      <option value="not_counted">Não Contado</option>
+                      <option value="found">Encontrado</option>
+                      <option value="not_found">Não Encontrado</option>
+                      <option value="damaged">Danificado</option>
+                      <option value="wrong_location">Local Incorreto</option>
+                    </select>
+                  </div>
+                  
+                  <div v-if="asset.countStatus === 'wrong_location'" class="form-group">
+                    <label>Local Atual</label>
+                    <input 
+                      type="text" 
+                      v-model="asset.actualLocation"
+                      class="form-input"
+                      placeholder="Onde foi encontrado"
+                    >
+                  </div>
+                  
+                  <div class="form-group">
+                    <label>Observações</label>
+                    <input 
+                      type="text" 
+                      v-model="asset.countNotes"
+                      class="form-input"
+                      placeholder="Observações da contagem"
+                    >
+                  </div>
+                </div>
+                
+                <div class="counting-status">
+                  <i 
+                    v-if="asset.counted"
+                    class="fas fa-check-circle"
+                    :class="asset.hasDiscrepancy ? 'text-warning' : 'text-success'"
+                  ></i>
+                  <i v-else class="fas fa-clock text-muted"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" @click="closeCountingModal">
+              Fechar
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-success"
+              @click="saveCountingProgress"
+              :disabled="loading"
+            >
+              {{ loading ? 'Salvando...' : 'Salvar Progresso' }}
+            </button>
+            <button 
+              type="button" 
+              class="btn btn-danger"
+              @click="finalizeInventory"
+              :disabled="loading || finalizing"
+            >
+              {{ finalizing ? 'Finalizando...' : 'Finalizar Inventário' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<script setup>
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans = async () => {
+      if (!offlineScans.value.length) return
+      try {
+        await store.reconcileScans(offlineScans.value)
+        offlineScans.value = []
+        saveOfflineScans()
+      } catch (e) {
+        // mantém fila para próxima tentativa
+      }
+    }
+    
+    loadOfflineScans()
+    
+    // Mensagens
+    const successMessage = ref('')
+    const errorMessage = ref('')
+    const finalizing = ref(false)
+    
+    // Formulários
+    const newInventory = ref({
+      description: '',
+      type: '',
+      locationId: '',
+      responsibleId: '',
+      startDate: '',
+      endDate: '',
+      notes: ''
+    })
+    
+    const countingAssets = ref([])
+    
+    // QR Scanner refs
+    const qrVideo = ref(null)
+    const scanner = ref(null)
+    const scanning = ref(false)
+    const cameras = ref([])
+    const selectedCameraId = ref('')
+    const manualCode = ref('')
+    const offlineMode = ref(false)
+    const lastScanCode = ref('')
+    const scanError = ref('')
+    
+    // Offline cache para leituras de QR
+    const offlineScanQueueKey = 'inventory_offline_scans'
+    const offlineScans = ref([])
+    
+    const loadOfflineScans = () => {
+      try {
+        const raw = localStorage.getItem(offlineScanQueueKey)
+        offlineScans.value = raw ? JSON.parse(raw) : []
+      } catch (_) {
+        offlineScans.value = []
+      }
+    }
+    const saveOfflineScans = () => {
+      try { localStorage.setItem(offlineScanQueueKey, JSON.stringify(offlineScans.value)) } catch (_) {}
+    }
+    
+    const enqueueOfflineScan = (payload) => {
+      offlineScans.value.push({ ...payload, ts: Date.now() })
+      saveOfflineScans()
+    }
+    
+    const reconcileOfflineScans =

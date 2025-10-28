@@ -1,0 +1,721 @@
+<template>
+  <div class="alerts-system">
+    <!-- Header do Sistema de Alertas -->
+    <div class="alerts-header">
+      <div class="header-content">
+        <div class="header-info">
+          <h3 class="alerts-title">
+            <v-icon icon="mdi-alert-circle" class="mr-2"></v-icon>
+            Sistema de Alertas
+          </h3>
+          <p class="alerts-subtitle">
+            {{ activeAlerts.length }} {{ activeAlerts.length === 1 ? 'alerta ativo' : 'alertas ativos' }}
+          </p>
+        </div>
+        
+        <div class="header-actions">
+          <v-btn
+            variant="outlined"
+            size="small"
+            @click="refreshAlerts"
+            :loading="isRefreshing"
+            class="mr-2"
+          >
+            <v-icon icon="mdi-refresh" class="mr-1"></v-icon>
+            Atualizar
+          </v-btn>
+          
+          <v-btn
+            variant="outlined"
+            size="small"
+            @click="clearAllAlerts"
+            :disabled="activeAlerts.length === 0"
+          >
+            <v-icon icon="mdi-notification-clear-all" class="mr-1"></v-icon>
+            Limpar Todos
+          </v-btn>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumo de Alertas -->
+    <div class="alerts-summary">
+      <v-row dense>
+        <v-col cols="12" sm="6" md="3">
+          <v-card variant="tonal" color="error">
+            <v-card-text class="text-center">
+              <v-icon icon="mdi-alert" size="large" class="mb-2"></v-icon>
+              <div class="summary-value">{{ criticalAlerts.length }}</div>
+              <div class="summary-label">Críticos</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        
+        <v-col cols="12" sm="6" md="3">
+          <v-card variant="tonal" color="warning">
+            <v-card-text class="text-center">
+              <v-icon icon="mdi-alert-circle" size="large" class="mb-2"></v-icon>
+              <div class="summary-value">{{ warningAlerts.length }}</div>
+              <div class="summary-label">Avisos</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        
+        <v-col cols="12" sm="6" md="3">
+          <v-card variant="tonal" color="info">
+            <v-card-text class="text-center">
+              <v-icon icon="mdi-information" size="large" class="mb-2"></v-icon>
+              <div class="summary-value">{{ infoAlerts.length }}</div>
+              <div class="summary-label">Informativos</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        
+        <v-col cols="12" sm="6" md="3">
+          <v-card variant="tonal" color="success">
+            <v-card-text class="text-center">
+              <v-icon icon="mdi-check-circle" size="large" class="mb-2"></v-icon>
+              <div class="summary-value">{{ resolvedToday }}</div>
+              <div class="summary-label">Resolvidos Hoje</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+    </div>
+
+    <!-- Lista de Alertas -->
+    <div class="alerts-list">
+      <v-card>
+        <v-card-title>
+          <div class="d-flex justify-space-between align-center w-100">
+            <span>Alertas Ativos</span>
+            <v-chip
+              :color="getAlertsSeverityColor()"
+              size="small"
+              variant="flat"
+            >
+              {{ activeAlerts.length }} ativos
+            </v-chip>
+          </div>
+        </v-card-title>
+        
+        <v-card-text v-if="activeAlerts.length === 0" class="text-center py-8">
+          <v-icon icon="mdi-check-circle" size="64" color="success" class="mb-4"></v-icon>
+          <h4 class="text-h6 mb-2">Nenhum alerta ativo</h4>
+          <p class="text-body-2 text-medium-emphasis">
+            Todas as máquinas estão funcionando normalmente.
+          </p>
+        </v-card-text>
+        
+        <div v-else>
+          <v-list>
+            <v-list-item
+              v-for="alert in sortedAlerts"
+              :key="alert.id"
+              class="alert-item"
+              :class="`alert-${alert.severity}`"
+            >
+              <template #prepend>
+                <v-avatar :color="getAlertColor(alert.severity)" size="40">
+                  <v-icon :icon="getAlertIcon(alert.severity)" color="white"></v-icon>
+                </v-avatar>
+              </template>
+              
+              <v-list-item-title class="alert-title">
+                {{ alert.title }}
+              </v-list-item-title>
+              
+              <v-list-item-subtitle class="alert-details">
+                <div class="alert-machine">
+                  <v-icon icon="mdi-desktop-classic" size="small" class="mr-1"></v-icon>
+                  {{ alert.machine_name }} ({{ alert.machine_ip }})
+                </div>
+                <div class="alert-description">{{ alert.description }}</div>
+                <div class="alert-time">
+                  <v-icon icon="mdi-clock-outline" size="small" class="mr-1"></v-icon>
+                  {{ formatTime(alert.created_at) }}
+                </div>
+              </v-list-item-subtitle>
+              
+              <template #append>
+                <div class="alert-actions">
+                  <v-btn
+                    icon="mdi-eye"
+                    size="small"
+                    variant="text"
+                    @click="viewAlertDetails(alert)"
+                    class="mr-1"
+                  ></v-btn>
+                  
+                  <v-btn
+                    icon="mdi-check"
+                    size="small"
+                    variant="text"
+                    color="success"
+                    @click="resolveAlert(alert)"
+                    class="mr-1"
+                  ></v-btn>
+                  
+                  <v-btn
+                    icon="mdi-close"
+                    size="small"
+                    variant="text"
+                    color="error"
+                    @click="dismissAlert(alert)"
+                  ></v-btn>
+                </div>
+              </template>
+            </v-list-item>
+          </v-list>
+        </div>
+      </v-card>
+    </div>
+
+    <!-- Dialog de Detalhes do Alerta -->
+    <v-dialog v-model="showAlertDialog" max-width="600">
+      <v-card v-if="selectedAlert">
+        <v-card-title class="d-flex align-center">
+          <v-avatar :color="getAlertColor(selectedAlert.severity)" size="32" class="mr-3">
+            <v-icon :icon="getAlertIcon(selectedAlert.severity)" color="white" size="small"></v-icon>
+          </v-avatar>
+          {{ selectedAlert.title }}
+        </v-card-title>
+        
+        <v-card-text>
+          <div class="alert-detail-section">
+            <h4 class="text-subtitle-1 mb-2">Informações da Máquina</h4>
+            <v-row dense>
+              <v-col cols="6">
+                <div class="detail-item">
+                  <span class="detail-label">Nome:</span>
+                  <span class="detail-value">{{ selectedAlert.machine_name }}</span>
+                </div>
+              </v-col>
+              <v-col cols="6">
+                <div class="detail-item">
+                  <span class="detail-label">IP:</span>
+                  <span class="detail-value">{{ selectedAlert.machine_ip }}</span>
+                </div>
+              </v-col>
+            </v-row>
+          </div>
+          
+          <v-divider class="my-4"></v-divider>
+          
+          <div class="alert-detail-section">
+            <h4 class="text-subtitle-1 mb-2">Detalhes do Alerta</h4>
+            <div class="detail-item mb-2">
+              <span class="detail-label">Severidade:</span>
+              <v-chip :color="getAlertColor(selectedAlert.severity)" size="small" variant="flat">
+                {{ selectedAlert.severity.toUpperCase() }}
+              </v-chip>
+            </div>
+            <div class="detail-item mb-2">
+              <span class="detail-label">Categoria:</span>
+              <span class="detail-value">{{ selectedAlert.category }}</span>
+            </div>
+            <div class="detail-item mb-2">
+              <span class="detail-label">Descrição:</span>
+              <span class="detail-value">{{ selectedAlert.description }}</span>
+            </div>
+            <div class="detail-item mb-2">
+              <span class="detail-label">Valor Atual:</span>
+              <span class="detail-value">{{ selectedAlert.current_value }}</span>
+            </div>
+            <div class="detail-item mb-2">
+              <span class="detail-label">Limite:</span>
+              <span class="detail-value">{{ selectedAlert.threshold }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Criado em:</span>
+              <span class="detail-value">{{ formatDateTime(selectedAlert.created_at) }}</span>
+            </div>
+          </div>
+          
+          <v-divider class="my-4"></v-divider>
+          
+          <div class="alert-detail-section" v-if="selectedAlert.recommendations">
+            <h4 class="text-subtitle-1 mb-2">Recomendações</h4>
+            <ul class="recommendations-list">
+              <li v-for="recommendation in selectedAlert.recommendations" :key="recommendation">
+                {{ recommendation }}
+              </li>
+            </ul>
+          </div>
+        </v-card-text>
+        
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            variant="text"
+            @click="showAlertDialog = false"
+          >
+            Fechar
+          </v-btn>
+          <v-btn
+            color="success"
+            variant="flat"
+            @click="resolveAlert(selectedAlert)"
+          >
+            Resolver
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar para notificações -->
+    <v-snackbar
+      v-model="showNotification"
+      :color="notificationColor"
+      :timeout="3000"
+      location="top right"
+    >
+      {{ notificationMessage }}
+      <template #actions>
+        <v-btn
+          variant="text"
+          @click="showNotification = false"
+        >
+          Fechar
+        </v-btn>
+      </template>
+    </v-snackbar>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { alertsAPI } from '@/services/api'
+
+// Reactive data
+const alerts = ref([])
+const isRefreshing = ref(false)
+const showAlertDialog = ref(false)
+const selectedAlert = ref(null)
+const refreshInterval = ref(null)
+
+// Notification system
+const showNotification = ref(false)
+const notificationMessage = ref('')
+const notificationColor = ref('success')
+
+// Computed properties
+const activeAlerts = computed(() => {
+  return alerts.value.filter(alert => alert.status === 'active')
+})
+
+const criticalAlerts = computed(() => {
+  return activeAlerts.value.filter(alert => alert.severity === 'critical')
+})
+
+const warningAlerts = computed(() => {
+  return activeAlerts.value.filter(alert => alert.severity === 'warning')
+})
+
+const infoAlerts = computed(() => {
+  return activeAlerts.value.filter(alert => alert.severity === 'info')
+})
+
+const resolvedToday = computed(() => {
+  const today = new Date().toDateString()
+  return alerts.value.filter(alert => 
+    alert.status === 'resolved' && 
+    new Date(alert.resolved_at).toDateString() === today
+  ).length
+})
+
+const sortedAlerts = computed(() => {
+  const severityOrder = { critical: 3, warning: 2, info: 1 }
+  return [...activeAlerts.value].sort((a, b) => {
+    if (severityOrder[a.severity] !== severityOrder[b.severity]) {
+      return severityOrder[b.severity] - severityOrder[a.severity]
+    }
+    return new Date(b.created_at) - new Date(a.created_at)
+  })
+})
+
+// Methods
+const loadAlerts = async () => {
+  try {
+    const response = await alertsAPI.getAll()
+    alerts.value = response.data
+  } catch (error) {
+    console.error('Error loading alerts:', error)
+    // Dados simulados para demonstração
+    alerts.value = generateMockAlerts()
+  }
+}
+
+const generateMockAlerts = () => {
+  return [
+    {
+      id: 1,
+      title: 'CPU com uso crítico',
+      description: 'Uso de CPU acima de 90% por mais de 5 minutos',
+      severity: 'critical',
+      category: 'CPU',
+      machine_name: 'DESKTOP-001',
+      machine_ip: '192.168.1.100',
+      current_value: '95%',
+      threshold: '90%',
+      status: 'active',
+      created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+      recommendations: [
+        'Verificar processos com alto consumo de CPU',
+        'Considerar reiniciar serviços desnecessários',
+        'Monitorar temperatura do processador'
+      ]
+    },
+    {
+      id: 2,
+      title: 'Memória RAM baixa',
+      description: 'Uso de memória acima de 85%',
+      severity: 'warning',
+      category: 'Memory',
+      machine_name: 'DESKTOP-002',
+      machine_ip: '192.168.1.101',
+      current_value: '87%',
+      threshold: '85%',
+      status: 'active',
+      created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+      recommendations: [
+        'Fechar aplicações desnecessárias',
+        'Verificar vazamentos de memória',
+        'Considerar adicionar mais RAM'
+      ]
+    },
+    {
+      id: 3,
+      title: 'Disco quase cheio',
+      description: 'Espaço em disco C: abaixo de 10%',
+      severity: 'critical',
+      category: 'Disk',
+      machine_name: 'DESKTOP-003',
+      machine_ip: '192.168.1.102',
+      current_value: '8% livre',
+      threshold: '10% livre',
+      status: 'active',
+      created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      recommendations: [
+        'Executar limpeza de disco',
+        'Remover arquivos temporários',
+        'Mover arquivos para outro disco'
+      ]
+    }
+  ]
+}
+
+const refreshAlerts = async () => {
+  isRefreshing.value = true
+  try {
+    await loadAlerts()
+    showSuccess('Alertas atualizados com sucesso')
+  } catch (error) {
+    showError('Erro ao atualizar alertas')
+  } finally {
+    isRefreshing.value = false
+  }
+}
+
+const clearAllAlerts = () => {
+  alerts.value = alerts.value.filter(alert => alert.status !== 'active')
+  showSuccess('Todos os alertas foram limpos')
+}
+
+const viewAlertDetails = (alert) => {
+  selectedAlert.value = alert
+  showAlertDialog.value = true
+}
+
+const resolveAlert = (alert) => {
+  const index = alerts.value.findIndex(a => a.id === alert.id)
+  if (index !== -1) {
+    alerts.value[index].status = 'resolved'
+    alerts.value[index].resolved_at = new Date().toISOString()
+  }
+  
+  if (showAlertDialog.value) {
+    showAlertDialog.value = false
+  }
+  
+  showSuccess(`Alerta "${alert.title}" foi resolvido`)
+}
+
+const dismissAlert = (alert) => {
+  const index = alerts.value.findIndex(a => a.id === alert.id)
+  if (index !== -1) {
+    alerts.value[index].status = 'dismissed'
+    alerts.value[index].dismissed_at = new Date().toISOString()
+  }
+  
+  showSuccess(`Alerta "${alert.title}" foi dispensado`)
+}
+
+const getAlertColor = (severity) => {
+  switch (severity) {
+    case 'critical': return 'error'
+    case 'warning': return 'warning'
+    case 'info': return 'info'
+    default: return 'surface-variant'
+  }
+}
+
+const getAlertIcon = (severity) => {
+  switch (severity) {
+    case 'critical': return 'mdi-alert'
+    case 'warning': return 'mdi-alert-circle'
+    case 'info': return 'mdi-information'
+    default: return 'mdi-help-circle'
+  }
+}
+
+const getAlertsSeverityColor = () => {
+  if (criticalAlerts.value.length > 0) return 'error'
+  if (warningAlerts.value.length > 0) return 'warning'
+  if (infoAlerts.value.length > 0) return 'info'
+  return 'success'
+}
+
+const formatTime = (dateString) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  
+  if (diffMins < 1) return 'Agora'
+  if (diffMins < 60) return `${diffMins}min atrás`
+  if (diffHours < 24) return `${diffHours}h atrás`
+  return date.toLocaleDateString('pt-BR')
+}
+
+const formatDateTime = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleString('pt-BR')
+}
+
+// Notification helpers
+const showSuccess = (message) => {
+  notificationMessage.value = message
+  notificationColor.value = 'success'
+  showNotification.value = true
+}
+
+const showError = (message) => {
+  notificationMessage.value = message
+  notificationColor.value = 'error'
+  showNotification.value = true
+}
+
+// Auto refresh
+const startAutoRefresh = () => {
+  refreshInterval.value = setInterval(() => {
+    loadAlerts()
+  }, 60000) // Atualiza a cada minuto
+}
+
+const stopAutoRefresh = () => {
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value)
+    refreshInterval.value = null
+  }
+}
+
+// Lifecycle hooks
+onMounted(() => {
+  loadAlerts()
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
+})
+</script>
+
+<style scoped>
+.alerts-system {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.alerts-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.header-info {
+  flex: 1;
+}
+
+.alerts-title {
+  display: flex;
+  align-items: center;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: rgb(var(--v-theme-on-background));
+}
+
+.alerts-subtitle {
+  color: rgb(var(--v-theme-on-background-variant));
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alerts-summary {
+  margin-top: 16px;
+}
+
+.summary-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.alert-item {
+  border-left: 4px solid transparent;
+  margin-bottom: 8px;
+}
+
+.alert-item.alert-critical {
+  border-left-color: rgb(var(--v-theme-error));
+  background-color: rgba(var(--v-theme-error), 0.05);
+}
+
+.alert-item.alert-warning {
+  border-left-color: rgb(var(--v-theme-warning));
+  background-color: rgba(var(--v-theme-warning), 0.05);
+}
+
+.alert-item.alert-info {
+  border-left-color: rgb(var(--v-theme-info));
+  background-color: rgba(var(--v-theme-info), 0.05);
+}
+
+.alert-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.alert-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.alert-machine,
+.alert-description,
+.alert-time {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.alert-machine {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 500;
+}
+
+.alert-description {
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+
+.alert-time {
+  color: rgb(var(--v-theme-on-surface-variant));
+  opacity: 0.7;
+}
+
+.alert-actions {
+  display: flex;
+  align-items: center;
+}
+
+.alert-detail-section {
+  margin-bottom: 16px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.detail-label {
+  font-weight: 500;
+  min-width: 100px;
+}
+
+.detail-value {
+  flex: 1;
+}
+
+.recommendations-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.recommendations-list li {
+  margin-bottom: 4px;
+}
+
+/* Responsividade */
+@media (max-width: 960px) {
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .header-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .alert-details {
+    font-size: 0.8rem;
+  }
+  
+  .alert-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+/* Animações */
+.alert-item {
+  transition: all 0.3s ease;
+}
+
+.alert-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+</style>

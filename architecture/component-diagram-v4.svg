@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style><![CDATA[
+      .box { fill: #ffffff; stroke: #1f2937; stroke-width: 2; rx: 10; }
+      .title { font: 700 18px 'Segoe UI', Tahoma, sans-serif; fill: #111827; }
+      .text { font: 400 14px 'Segoe UI', Tahoma, sans-serif; fill: #374151; }
+      .label { font: 600 12px 'Segoe UI', Tahoma, sans-serif; fill: #111827; }
+      .muted { fill: #6b7280; }
+      .pill { fill: #e5e7eb; stroke: #9ca3af; stroke-width: 1; rx: 12; }
+      .arrow { stroke: #2563eb; stroke-width: 2; marker-end: url(#arrowhead); }
+      .arrow-sec { stroke: #10b981; stroke-width: 2; marker-end: url(#arrowhead); }
+      .bg { fill: #f9fafb; }
+      .chip { fill: #ecfeff; stroke: #06b6d4; stroke-width: 1; rx: 8; }
+    ]]></style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect class="bg" x="0" y="0" width="1200" height="800" />
+
+  <!-- Header -->
+  <text x="40" y="50" class="title">Arquitetura de Componentes: Agente Python → API REST (FastAPI) → Banco (PostgreSQL/SQL Server) → Dashboard React</text>
+  <text x="40" y="75" class="text muted">Comunicação segura via HTTPS/TLS, autenticação por token (JWT), autorização por papéis (RBAC), rate limit e validação.</text>
+
+  <!-- Components Row -->
+  <!-- Python Agent -->
+  <rect class="box" x="60" y="140" width="240" height="160" />
+  <text x="80" y="170" class="title">Agente Python</text>
+  <text x="80" y="195" class="text">• Coleta métricas e inventário</text>
+  <text x="80" y="215" class="text">• Envia eventos e alertas</text>
+  <text x="80" y="235" class="text">• Endpoints alvo:</text>
+  <rect class="pill" x="80" y="245" width="200" height="22" />
+  <text x="90" y="260" class="label">POST /machines/register</text>
+  <rect class="pill" x="80" y="270" width="180" height="22" />
+  <text x="90" y="285" class="label">POST /machines/status</text>
+  <rect class="pill" x="80" y="295" width="160" height="22" />
+  <text x="90" y="310" class="label">POST /alerts/send</text>
+
+  <!-- FastAPI Service -->
+  <rect class="box" x="360" y="120" width="300" height="200" />
+  <text x="380" y="150" class="title">API REST (FastAPI)</text>
+  <text x="380" y="175" class="text">• Autenticação JWT e RBAC</text>
+  <text x="380" y="195" class="text">• Rate limiting, validação</text>
+  <text x="380" y="215" class="text">• Rotas:</text>
+  <rect class="pill" x="380" y="225" width="240" height="22" />
+  <text x="390" y="240" class="label">/machines, /tickets, /alerts</text>
+  <rect class="pill" x="380" y="250" width="220" height="22" />
+  <text x="390" y="265" class="label">/ativos, /auditorias, etc.</text>
+
+  <!-- Database -->
+  <rect class="box" x="720" y="120" width="300" height="200" />
+  <text x="740" y="150" class="title">Banco de Dados</text>
+  <text x="740" y="175" class="text">• PostgreSQL ou SQL Server</text>
+  <text x="740" y="195" class="text">• ORM (SQLAlchemy)</text>
+  <text x="740" y="215" class="text">• Auditorias, tickets, máquinas</text>
+
+  <!-- React Dashboard -->
+  <rect class="box" x="360" y="360" width="300" height="200" />
+  <text x="380" y="390" class="title">Dashboard React</text>
+  <text x="380" y="415" class="text">• UI de Auditorias e Inventário</text>
+  <text x="380" y="435" class="text">• Fluxos: iniciar, escanear, revisar,</text>
+  <text x="380" y="455" class="text">  finalizar, relatório</text>
+  <rect class="pill" x="380" y="465" width="240" height="22" />
+  <text x="390" y="480" class="label">Consome /tickets e /auditorias</text>
+
+  <!-- Secure Communication Arrows -->
+  <!-- Agent -> API -->
+  <line x1="300" y1="220" x2="360" y2="220" class="arrow" />
+  <text x="305" y="205" class="label">HTTPS/TLS + JWT</text>
+
+  <!-- API -> DB -->
+  <line x1="660" y1="220" x2="720" y2="220" class="arrow-sec" />
+  <text x="665" y="205" class="label">Conexão segura</text>
+  <rect class="chip" x="640" y="235" width="120" height="24" />
+  <text x="650" y="253" class="label">SQLAlchemy</text>
+
+  <!-- Dashboard -> API -->
+  <line x1="510" y1="360" x2="510" y2="320" class="arrow" />
+  <text x="520" y="340" class="label">HTTPS/TLS + JWT</text>
+
+  <!-- Annotations: Segurança -->
+  <rect class="box" x="60" y="360" width="260" height="200" />
+  <text x="80" y="390" class="title">Padrões de Segurança</text>
+  <text x="80" y="415" class="text">• TLS obrigatório (API e Dashboard)</text>
+  <text x="80" y="435" class="text">• Autenticação por token (JWT)</text>
+  <text x="80" y="455" class="text">• RBAC por papéis e permissões</text>
+  <text x="80" y="475" class="text">• Rate limit e proteção contra abuso</text>
+  <text x="80" y="495" class="text">• Validação e sanitização de entrada</text>
+
+  <!-- Callouts: Endpoints -->
+  <rect class="box" x="720" y="360" width="300" height="200" />
+  <text x="740" y="390" class="title">Endpoints Iniciais</text>
+  <text x="740" y="415" class="text">• POST /machines/register</text>
+  <text x="740" y="435" class="text">• POST /machines/status</text>
+  <text x="740" y="455" class="text">• POST /tickets/create</text>
+  <text x="740" y="475" class="text">• POST /alerts/send</text>
+
+  <!-- Footer Note -->
+  <text x="40" y="760" class="text muted">Diagrama v4 • Este diagrama resume a arquitetura cliente-servidor com comunicação segura e os endpoints iniciais para integração dos agentes e do dashboard.</text>
+</svg>

@@ -1,0 +1,58 @@
+import { useAuthStore } from '@/stores/auth'
+
+export function authMiddleware(to, from, next) {
+  const authStore = useAuthStore()
+  
+  // TEMPORÁRIO: Desabilitar autenticação e acesso restrito
+  // Permitir todas as rotas sem exigir login e sem redirecionar
+  // Mantemos apenas logs/avisos, mas não bloqueamos
+  if (to.meta.requiresAuth) {
+    // Comentado temporariamente: bloqueios e redirecionamentos
+    // if (!authStore.isAuthenticated) {
+    //   localStorage.setItem('redirectAfterLogin', to.fullPath)
+    //   return next('/auth/login')
+    // }
+    
+    // if (authStore.isBlocked) {
+    //   return next('/auth/login')
+    // }
+    
+    // if (to.meta.requiresRole && !authStore.hasRole(to.meta.requiresRole)) {
+    //   console.warn(`Acesso negado: role '${to.meta.requiresRole}' requerida`)
+    //   return next('/')
+    // }
+    
+    // if (to.meta.requiresPermission && !authStore.checkPermission(to.meta.requiresPermission)) {
+    //   console.warn(`Acesso negado: permissão '${to.meta.requiresPermission}' requerida`)
+    //   return next('/')
+    // }
+    
+    // if (to.meta.requiresModule && !authStore.canAccessModule(to.meta.requiresModule)) {
+    //   console.warn(`Acesso negado: módulo '${to.meta.requiresModule}' não permitido`)
+    //   return next('/')
+    // }
+  }
+  
+  // TEMPORÁRIO: Não bloquear rotas de guest
+  // if (to.meta.requiresGuest && authStore.isAuthenticated) {
+  //   return next('/')
+  // }
+  
+  next()
+}
+
+export function setupAuthGuards(router) {
+  router.beforeEach(authMiddleware)
+  
+  // Guard para redirecionamento após login (mantido, mas não deve acionar sem redirectAfterLogin)
+  router.afterEach((to) => {
+    if (to.name === 'Dashboard' && localStorage.getItem('redirectAfterLogin')) {
+      const redirectPath = localStorage.getItem('redirectAfterLogin')
+      localStorage.removeItem('redirectAfterLogin')
+      
+      if (redirectPath !== to.fullPath && redirectPath !== '/') {
+        router.push(redirectPath)
+      }
+    }
+  })
+}

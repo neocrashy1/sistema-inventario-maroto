@@ -1,0 +1,876 @@
+<template>
+  <div class="locations">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-header-content">
+        <h1 class="page-title">Localizações</h1>
+        <p class="page-subtitle">Gestão de locais e ambientes da empresa</p>
+      </div>
+      
+      <div class="page-actions">
+        <button class="btn btn-secondary" @click="exportLocations">
+          <i class="fas fa-download"></i>
+          Exportar
+        </button>
+        <button class="btn btn-primary" @click="showAddModal = true">
+          <i class="fas fa-plus"></i>
+          Nova Localização
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon primary">
+          <i class="fas fa-map-marker-alt"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">Total de Localizações</div>
+          <div class="stat-value">{{ locations.length }}</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon success">
+          <i class="fas fa-boxes"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">Ativos Alocados</div>
+          <div class="stat-value">{{ totalAssetsInLocations }}</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon warning">
+          <i class="fas fa-building"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">Prédios</div>
+          <div class="stat-value">{{ totalBuildings }}</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon info">
+          <i class="fas fa-door-open"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">Salas</div>
+          <div class="stat-value">{{ totalRooms }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+      <div class="filters-row">
+        <div class="filter-group">
+          <label>Buscar</label>
+          <div class="search-input">
+            <i class="fas fa-search"></i>
+            <input 
+              type="text" 
+              placeholder="Buscar por nome ou código..."
+              v-model="searchQuery"
+              @input="applyFilters"
+            >
+          </div>
+        </div>
+        
+        <div class="filter-group">
+          <label>Tipo</label>
+          <select v-model="selectedType" @change="applyFilters">
+            <option value="">Todos os tipos</option>
+            <option value="Prédio">Prédio</option>
+            <option value="Andar">Andar</option>
+            <option value="Sala">Sala</option>
+            <option value="Área Externa">Área Externa</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>Status</label>
+          <select v-model="selectedStatus" @change="applyFilters">
+            <option value="">Todos os status</option>
+            <option value="Ativo">Ativo</option>
+            <option value="Inativo">Inativo</option>
+            <option value="Manutenção">Manutenção</option>
+          </select>
+        </div>
+        
+        <button class="btn btn-outline" @click="clearFilters">
+          <i class="fas fa-times"></i>
+          Limpar
+        </button>
+      </div>
+    </div>
+
+    <!-- Locations Grid -->
+    <div class="locations-grid">
+      <div 
+        v-for="location in filteredLocations" 
+        :key="location.id"
+        class="location-card"
+        @click="selectLocation(location)"
+      >
+        <div class="location-header">
+          <div class="location-icon">
+            <i :class="getLocationIcon(location.type)"></i>
+          </div>
+          <div class="location-info">
+            <h3>{{ location.name }}</h3>
+            <p class="location-code">{{ location.code }}</p>
+            <span class="location-type">{{ location.type }}</span>
+          </div>
+          <div class="location-status">
+            <span class="badge" :class="getStatusClass(location.status)">
+              {{ location.status }}
+            </span>
+          </div>
+        </div>
+
+        <div class="location-details">
+          <div class="detail-row">
+            <span class="label">Capacidade:</span>
+            <span class="value">{{ location.capacity }} pessoas</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Ativos:</span>
+            <span class="value">{{ location.assetsCount }} itens</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Responsável:</span>
+            <span class="value">{{ location.responsible }}</span>
+          </div>
+        </div>
+
+        <div class="location-actions">
+          <button 
+            class="btn btn-sm btn-secondary"
+            @click.stop="editLocation(location)"
+          >
+            <i class="fas fa-edit"></i>
+            Editar
+          </button>
+          <button 
+            class="btn btn-sm btn-outline"
+            @click.stop="viewAssets(location)"
+          >
+            <i class="fas fa-boxes"></i>
+            Ver Ativos
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div v-if="showAddModal || showEditModal" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>{{ showAddModal ? 'Nova Localização' : 'Editar Localização' }}</h2>
+          <button class="close-btn" @click="closeModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <form @submit.prevent="saveLocation">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Nome *</label>
+                <input 
+                  type="text" 
+                  v-model="locationForm.name" 
+                  required
+                  placeholder="Ex: Sala 101"
+                >
+              </div>
+              
+              <div class="form-group">
+                <label>Código *</label>
+                <input 
+                  type="text" 
+                  v-model="locationForm.code" 
+                  required
+                  placeholder="Ex: S101"
+                >
+              </div>
+              
+              <div class="form-group">
+                <label>Tipo *</label>
+                <select v-model="locationForm.type" required>
+                  <option value="">Selecione o tipo</option>
+                  <option value="Prédio">Prédio</option>
+                  <option value="Andar">Andar</option>
+                  <option value="Sala">Sala</option>
+                  <option value="Área Externa">Área Externa</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Status</label>
+                <select v-model="locationForm.status">
+                  <option value="Ativo">Ativo</option>
+                  <option value="Inativo">Inativo</option>
+                  <option value="Manutenção">Manutenção</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Capacidade</label>
+                <input 
+                  type="number" 
+                  v-model="locationForm.capacity" 
+                  placeholder="Número de pessoas"
+                >
+              </div>
+              
+              <div class="form-group">
+                <label>Responsável</label>
+                <input 
+                  type="text" 
+                  v-model="locationForm.responsible" 
+                  placeholder="Nome do responsável"
+                >
+              </div>
+            </div>
+            
+            <div class="form-group full-width">
+              <label>Descrição</label>
+              <textarea 
+                v-model="locationForm.description" 
+                rows="3"
+                placeholder="Descrição da localização..."
+              ></textarea>
+            </div>
+            
+            <div class="form-group full-width">
+              <label>Endereço</label>
+              <textarea 
+                v-model="locationForm.address" 
+                rows="2"
+                placeholder="Endereço completo..."
+              ></textarea>
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="closeModal">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-primary" @click="saveLocation">
+            <i class="fas fa-save"></i>
+            {{ showAddModal ? 'Criar' : 'Salvar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div v-if="successMessage" class="success-message">
+      <i class="fas fa-check-circle"></i>
+      {{ successMessage }}
+    </div>
+
+    <div v-if="errorMessage" class="error-message">
+      <i class="fas fa-exclamation-triangle"></i>
+      {{ errorMessage }}
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useLocationsStore } from '@/stores/locations'
+
+const locationsStore = useLocationsStore()
+
+// Estado reativo
+const showAddModal = ref(false)
+const showEditModal = ref(false)
+const searchQuery = ref('')
+const selectedType = ref('')
+const selectedStatus = ref('')
+const successMessage = ref('')
+const errorMessage = ref('')
+
+// Dados das localizações
+const locations = ref([
+  {
+    id: 1,
+    name: 'Prédio Principal',
+    code: 'PRED01',
+    type: 'Prédio',
+    status: 'Ativo',
+    capacity: 200,
+    assetsCount: 45,
+    responsible: 'João Silva',
+    description: 'Prédio principal da empresa',
+    address: 'Rua Principal, 123 - Centro'
+  },
+  {
+    id: 2,
+    name: 'TI - Sala 101',
+    code: 'TI101',
+    type: 'Sala',
+    status: 'Ativo',
+    capacity: 15,
+    assetsCount: 12,
+    responsible: 'Maria Santos',
+    description: 'Sala do departamento de TI',
+    address: 'Prédio Principal - 1º Andar'
+  },
+  {
+    id: 3,
+    name: 'TI - Sala 102',
+    code: 'TI102',
+    type: 'Sala',
+    status: 'Ativo',
+    capacity: 10,
+    assetsCount: 8,
+    responsible: 'Carlos Lima',
+    description: 'Sala de desenvolvimento',
+    address: 'Prédio Principal - 1º Andar'
+  },
+  {
+    id: 4,
+    name: 'Administração',
+    code: 'ADM01',
+    type: 'Sala',
+    status: 'Ativo',
+    capacity: 20,
+    assetsCount: 15,
+    responsible: 'Ana Costa',
+    description: 'Departamento administrativo',
+    address: 'Prédio Principal - 2º Andar'
+  },
+  {
+    id: 5,
+    name: 'Almoxarifado',
+    code: 'ALM01',
+    type: 'Sala',
+    status: 'Ativo',
+    capacity: 5,
+    assetsCount: 25,
+    responsible: 'Pedro Oliveira',
+    description: 'Depósito de materiais',
+    address: 'Prédio Principal - Térreo'
+  }
+])
+
+// Formulário
+const locationForm = ref({
+  name: '',
+  code: '',
+  type: '',
+  status: 'Ativo',
+  capacity: '',
+  responsible: '',
+  description: '',
+  address: ''
+})
+
+const editingLocation = ref(null)
+
+// Computed
+const filteredLocations = computed(() => {
+  let filtered = locations.value
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(location => 
+      location.name.toLowerCase().includes(query) ||
+      location.code.toLowerCase().includes(query)
+    )
+  }
+
+  if (selectedType.value) {
+    filtered = filtered.filter(location => location.type === selectedType.value)
+  }
+
+  if (selectedStatus.value) {
+    filtered = filtered.filter(location => location.status === selectedStatus.value)
+  }
+
+  return filtered
+})
+
+const totalAssetsInLocations = computed(() => {
+  return locations.value.reduce((total, location) => total + location.assetsCount, 0)
+})
+
+const totalBuildings = computed(() => {
+  return locations.value.filter(location => location.type === 'Prédio').length
+})
+
+const totalRooms = computed(() => {
+  return locations.value.filter(location => location.type === 'Sala').length
+})
+
+// Métodos
+const applyFilters = () => {
+  // Filtros são aplicados automaticamente via computed
+}
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  selectedType.value = ''
+  selectedStatus.value = ''
+}
+
+const getLocationIcon = (type) => {
+  const icons = {
+    'Prédio': 'fas fa-building',
+    'Andar': 'fas fa-layer-group',
+    'Sala': 'fas fa-door-open',
+    'Área Externa': 'fas fa-tree'
+  }
+  return icons[type] || 'fas fa-map-marker-alt'
+}
+
+const getStatusClass = (status) => {
+  const classes = {
+    'Ativo': 'badge-success',
+    'Inativo': 'badge-danger',
+    'Manutenção': 'badge-warning'
+  }
+  return classes[status] || 'badge-secondary'
+}
+
+const selectLocation = (location) => {
+  console.log('Localização selecionada:', location)
+}
+
+const editLocation = (location) => {
+  editingLocation.value = location
+  locationForm.value = { ...location }
+  showEditModal.value = true
+}
+
+const viewAssets = (location) => {
+  // Navegar para página de ativos filtrada por localização
+  console.log('Ver ativos da localização:', location)
+}
+
+const saveLocation = () => {
+  try {
+    if (showAddModal.value) {
+      // Adicionar nova localização
+      const newLocation = {
+        ...locationForm.value,
+        id: Date.now(),
+        assetsCount: 0
+      }
+      locations.value.push(newLocation)
+      successMessage.value = 'Localização criada com sucesso!'
+    } else {
+      // Editar localização existente
+      const index = locations.value.findIndex(l => l.id === editingLocation.value.id)
+      if (index !== -1) {
+        locations.value[index] = { ...locationForm.value, id: editingLocation.value.id }
+        successMessage.value = 'Localização atualizada com sucesso!'
+      }
+    }
+    
+    closeModal()
+    setTimeout(() => successMessage.value = '', 3000)
+    
+  } catch (error) {
+    errorMessage.value = 'Erro ao salvar localização: ' + error.message
+    setTimeout(() => errorMessage.value = '', 5000)
+  }
+}
+
+const closeModal = () => {
+  showAddModal.value = false
+  showEditModal.value = false
+  editingLocation.value = null
+  locationForm.value = {
+    name: '',
+    code: '',
+    type: '',
+    status: 'Ativo',
+    capacity: '',
+    responsible: '',
+    description: '',
+    address: ''
+  }
+}
+
+const exportLocations = () => {
+  // Implementar exportação
+  console.log('Exportando localizações...')
+  successMessage.value = 'Exportação iniciada!'
+  setTimeout(() => successMessage.value = '', 3000)
+}
+
+onMounted(() => {
+  // Carregar dados se necessário
+})
+</script>
+
+<style scoped>
+.locations {
+  padding: 0;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.page-header-content h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.page-header-content p {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.page-actions {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.stat-card {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.stat-icon.primary { background-color: var(--primary-color); }
+.stat-icon.success { background-color: var(--success-color); }
+.stat-icon.warning { background-color: var(--warning-color); }
+.stat-icon.info { background-color: var(--info-color); }
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-xs);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.filters-section {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.filters-row {
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 200px;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.search-input {
+  position: relative;
+}
+
+.search-input i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.search-input input {
+  padding-left: 40px;
+}
+
+.locations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.location-card {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.location-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+}
+
+.location-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.location-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+  margin-right: var(--spacing-md);
+}
+
+.location-info {
+  flex: 1;
+}
+
+.location-info h3 {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--text-primary);
+  font-size: 1.125rem;
+}
+
+.location-code {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-family: monospace;
+}
+
+.location-type {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.location-status {
+  margin-left: var(--spacing-md);
+}
+
+.location-details {
+  margin-bottom: var(--spacing-md);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.value {
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.location-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.btn-sm {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.875rem;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+}
+
+.modal-body {
+  padding: var(--spacing-lg);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+/* Messages */
+.success-message,
+.error-message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  color: white;
+  font-weight: 600;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.success-message {
+  background-color: var(--success-color);
+}
+
+.error-message {
+  background-color: var(--danger-color);
+}
+
+@media (max-width: 768px) {
+  .locations-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-group {
+    min-width: auto;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: var(--spacing-md);
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

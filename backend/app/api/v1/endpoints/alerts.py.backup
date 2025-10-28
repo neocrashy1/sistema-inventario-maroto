@@ -1,0 +1,416 @@
+"""
+Alert endpoints
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
+from datetime import datetime
+import structlog
+
+from app.core.database import get_async_session
+from app.core.security import get_current_user_id, security
+from app.core.exceptions import ValidationException
+
+logger = structlog.get_logger()
+
+router = APIRouter()
+
+
+# Pydantic models
+class AlertSend(BaseModel):
+    """Alert sending request"""
+    alert_type: str  # critical, warning, info, maintenance
+    title: str
+    message: str
+    source: str  # system, agent, user, monitoring
+    machine_hostname: Optional[str] = None
+    asset_id: Optional[int] = None
+    location_code: Optional[str] = None
+    severity: int = 1  # 1-5 scale
+    category: str  # hardware, software, network, security, performance
+    metadata: Optional[Dict[str, Any]] = None
+    auto_resolve: bool = False
+    escalation_rules: Optional[Dict[str, Any]] = None
+
+
+class AlertUpdate(BaseModel):
+    """Alert update request"""
+    status: Optional[str] = None  # active, acknowledged, resolved, suppressed
+    acknowledged_by: Optional[int] = None
+    resolution_notes: Optional[str] = None
+    escalation_level: Optional[int] = None
+
+
+class AlertResponse(BaseModel):
+    """Alert response model"""
+    id: int
+    alert_number: str
+    alert_type: str
+    title: str
+    message: str
+    status: str
+    severity: int
+    category: str
+    source: str
+    machine_hostname: Optional[str]
+    asset_id: Optional[int]
+    location_code: Optional[str]
+    acknowledged_by: Optional[int]
+    acknowledged_at: Optional[str]
+    resolved_at: Optional[str]
+    escalation_level: int
+    notification_count: int
+    created_at: str
+    updated_at: Optional[str]
+
+
+@router.post("/send", response_model=dict)
+async def send_alert(
+    alert_data: AlertSend,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: str = Depends(lambda creds=Depends(security): get_current_user_id(creds))
+):
+    """
+    Send a new alert
+    
+    This endpoint allows Python agents and monitoring systems to send alerts
+    for various system events and issues.
+    """
+    try:
+        logger.info(
+            "Alert sending request",
+            alert_type=alert_data.alert_type,
+            title=alert_data.title,
+            severity=alert_data.severity,
+            source=alert_data.source,
+            machine_hostname=alert_data.machine_hostname
+        )
+        
+        # Validate alert data
+        if alert_data.alert_type not in ["critical", "warning", "info", "maintenance"]:
+            raise ValidationException("Invalid alert type")
+        
+        if alert_data.severity < 1 or alert_data.severity > 5:
+            raise ValidationException("Severity must be between 1 and 5")
+        
+        if not alert_data.title or not alert_data.message:
+            raise ValidationException("Title and message are required")
+        
+        # Generate alert number
+        alert_number = f"AL-{datetime.now().strftime('%Y%m%d')}-{2001}"  # Mock number
+        
+        # TODO: Implement actual database logic
+        # alert = await create_alert_record(db, alert_data, current_user)
+        
+        # Determine notification channels based on severity and type
+        notification_channels = []
+        escalation_level = 1
+        
+        if alert_data.alert_type == "critical" or alert_data.severity >= 4:
+            notification_channels.extend(["email", "sms", "slack"])
+            escalation_level = 2
+            
+            # Auto-escalate critical alerts
+            if alert_data.severity == 5:
+                notification_channels.append("phone_call")
+                escalation_level = 3
+        elif alert_data.alert_type == "warning" or alert_data.severity >= 2:
+            notification_channels.extend(["email", "slack"])
+        else:
+            notification_channels.append("email")
+        
+        # Check for duplicate alerts (suppress if similar alert exists)
+        is_duplicate = False
+        if alert_data.machine_hostname:
+            # TODO: Check for similar alerts in last 5 minutes
+            # is_duplicate = await check_duplicate_alert(db, alert_data)
+            pass
+        
+        # Auto-create ticket for critical alerts
+        ticket_created = False
+        ticket_id = None
+        if alert_data.alert_type == "critical" and not is_duplicate:
+            # TODO: Auto-create support ticket
+            ticket_id = 1  # Mock ticket ID
+            ticket_created = True
+        
+        # Send notifications
+        notifications_sent = []
+        for channel in notification_channels:
+            # TODO: Implement actual notification sending
+            notifications_sent.append(f"{channel}_sent")
+        
+        alert_id = 1  # Mock ID
+        
+        logger.info(
+            "Alert sent successfully",
+            alert_id=alert_id,
+            alert_number=alert_number,
+            escalation_level=escalation_level,
+            notifications_sent=len(notifications_sent),
+            ticket_created=ticket_created
+        )
+        
+        return {
+            "success": True,
+            "message": "Alert sent successfully",
+            "alert_id": alert_id,
+            "alert_number": alert_number,
+            "status": "active",
+            "escalation_level": escalation_level,
+            "notifications_sent": notifications_sent,
+            "is_duplicate": is_duplicate,
+            "ticket_created": ticket_created,
+            "ticket_id": ticket_id,
+            "auto_resolve_in": "1h" if alert_data.auto_resolve else None
+        }
+        
+    except ValidationException:
+        raise
+    except Exception as e:
+        logger.error("Alert sending failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send alert"
+        )
+
+
+@router.get("/{alert_id}", response_model=AlertResponse)
+async def get_alert(
+    alert_id: int,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: str = Depends(lambda creds=Depends(security): get_current_user_id(creds))
+):
+    """
+    Get alert details by ID
+    """
+    try:
+        # TODO: Implement actual database logic
+        # alert = await get_alert_by_id(db, alert_id)
+        # if not alert:
+        #     raise NotFoundException(f"Alert with ID {alert_id} not found")
+        
+        # Mock response
+        return {
+            "id": alert_id,
+            "alert_number": f"AL-20240115-{2000 + alert_id}",
+            "alert_type": "critical",
+            "title": "High CPU usage detected",
+            "message": "CPU usage has exceeded 90% for more than 5 minutes",
+            "status": "active",
+            "severity": 4,
+            "category": "performance",
+            "source": "monitoring",
+            "machine_hostname": "server-001",
+            "asset_id": 1,
+            "location_code": "DC1-R01",
+            "acknowledged_by": None,
+            "acknowledged_at": None,
+            "resolved_at": None,
+            "escalation_level": 2,
+            "notification_count": 3,
+            "created_at": "2024-01-15T10:00:00Z",
+            "updated_at": "2024-01-15T10:05:00Z"
+        }
+        
+    except Exception as e:
+        logger.error("Failed to get alert", alert_id=alert_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve alert"
+        )
+
+
+@router.put("/{alert_id}", response_model=dict)
+async def update_alert(
+    alert_id: int,
+    update_data: AlertUpdate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: str = Depends(lambda creds=Depends(security): get_current_user_id(creds))
+):
+    """
+    Update alert status (acknowledge, resolve, etc.)
+    """
+    try:
+        logger.info(
+            "Alert update request",
+            alert_id=alert_id,
+            status=update_data.status,
+            user_id=current_user
+        )
+        
+        # TODO: Implement actual database logic
+        # alert = await get_alert_by_id(db, alert_id)
+        # if not alert:
+        #     raise NotFoundException(f"Alert with ID {alert_id} not found")
+        
+        # Update alert
+        # updated_alert = await update_alert_record(db, alert_id, update_data, current_user)
+        
+        # Handle status changes
+        notifications_sent = []
+        if update_data.status == "acknowledged":
+            notifications_sent.append("acknowledgment_notification")
+        elif update_data.status == "resolved":
+            notifications_sent.append("resolution_notification")
+            # Auto-close related tickets
+            # TODO: Close related tickets
+        
+        logger.info(
+            "Alert updated successfully",
+            alert_id=alert_id,
+            new_status=update_data.status
+        )
+        
+        return {
+            "success": True,
+            "message": "Alert updated successfully",
+            "alert_id": alert_id,
+            "status": update_data.status or "active",
+            "notifications_sent": notifications_sent
+        }
+        
+    except Exception as e:
+        logger.error("Alert update failed", alert_id=alert_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update alert"
+        )
+
+
+@router.get("/", response_model=List[AlertResponse])
+async def list_alerts(
+    skip: int = 0,
+    limit: int = 100,
+    status: Optional[str] = None,
+    alert_type: Optional[str] = None,
+    severity: Optional[int] = None,
+    category: Optional[str] = None,
+    machine_hostname: Optional[str] = None,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: str = Depends(lambda creds=Depends(security): get_current_user_id(creds))
+):
+    """
+    List alerts with optional filtering
+    """
+    try:
+        # TODO: Implement actual database logic
+        # alerts = await get_alerts(db, skip=skip, limit=limit, filters={...})
+        
+        # Mock response
+        alerts = [
+            {
+                "id": 1,
+                "alert_number": "AL-20240115-2001",
+                "alert_type": "critical",
+                "title": "High CPU usage detected",
+                "message": "CPU usage has exceeded 90% for more than 5 minutes",
+                "status": "active",
+                "severity": 4,
+                "category": "performance",
+                "source": "monitoring",
+                "machine_hostname": "server-001",
+                "asset_id": 1,
+                "location_code": "DC1-R01",
+                "acknowledged_by": None,
+                "acknowledged_at": None,
+                "resolved_at": None,
+                "escalation_level": 2,
+                "notification_count": 3,
+                "created_at": "2024-01-15T10:00:00Z",
+                "updated_at": "2024-01-15T10:05:00Z"
+            }
+        ]
+        
+        return alerts
+        
+    except Exception as e:
+        logger.error("Failed to list alerts", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve alerts"
+        )
+
+
+@router.post("/bulk-acknowledge", response_model=dict)
+async def bulk_acknowledge_alerts(
+    alert_ids: List[int],
+    db: AsyncSession = Depends(get_async_session),
+    current_user: str = Depends(lambda creds=Depends(security): get_current_user_id(creds))
+):
+    """
+    Acknowledge multiple alerts at once
+    """
+    try:
+        logger.info(
+            "Bulk acknowledge request",
+            alert_count=len(alert_ids),
+            user_id=current_user
+        )
+        
+        # TODO: Implement actual database logic
+        # acknowledged_count = await bulk_acknowledge_alerts_db(db, alert_ids, current_user)
+        
+        acknowledged_count = len(alert_ids)  # Mock
+        
+        return {
+            "success": True,
+            "message": f"Acknowledged {acknowledged_count} alerts",
+            "acknowledged_count": acknowledged_count,
+            "failed_count": 0
+        }
+        
+    except Exception as e:
+        logger.error("Bulk acknowledge failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to acknowledge alerts"
+        )
+
+
+@router.get("/dashboard/summary", response_model=dict)
+async def get_alert_dashboard_summary(
+    db: AsyncSession = Depends(get_async_session),
+    current_user: str = Depends(lambda creds=Depends(security): get_current_user_id(creds))
+):
+    """
+    Get alert summary for dashboard
+    """
+    try:
+        # TODO: Implement actual database logic
+        # summary = await get_alert_summary(db)
+        
+        # Mock response
+        summary = {
+            "total_active": 15,
+            "critical": 3,
+            "warning": 8,
+            "info": 4,
+            "acknowledged": 7,
+            "unacknowledged": 8,
+            "avg_resolution_time": "2.5h",
+            "escalated": 2,
+            "by_category": {
+                "performance": 5,
+                "network": 3,
+                "hardware": 4,
+                "security": 2,
+                "software": 1
+            },
+            "recent_trends": {
+                "last_24h": 15,
+                "last_7d": 89,
+                "last_30d": 342
+            }
+        }
+        
+        return summary
+        
+    except Exception as e:
+        logger.error("Failed to get alert summary", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve alert summary"
+        )

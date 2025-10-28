@@ -1,0 +1,724 @@
+import { ref, reactive, computed, watch, onUnmounted, nextTick } from 'vue'
+
+/**
+ * Composable para otimização de memória com garbage collection inteligente
+ */
+export function useMemoryOptimization(options = {}) {
+  const {
+    maxCacheSize = 100,
+    maxCacheAge = 5 * 60 * 1000, // 5 minutos
+    gcInterval = 30 * 1000, // 30 segundos
+    memoryThreshold = 50, // 50MB
+    enableAutoGC = true,
+    enableMemoryMonitoring = true,
+    enableWeakReferences = true
+  } = options
+
+  // Estados reativos
+  const memoryStats = reactive({
+    usedJSHeapSize: 0,
+    totalJSHeapSize: 0,
+    jsHeapSizeLimit: 0,
+    percentage: 0,
+    lastGC: null,
+    gcCount: 0,
+    cacheSize: 0,
+    weakRefsCount: 0
+  })
+
+  const isOptimizing = ref(false)
+  const gcHistory = ref([])
+  const cacheStats = reactive({
+    hits: 0,
+    misses: 0,
+    evictions: 0,
+    hitRate: 0
+  })
+
+  // Cache com TTL e LRU
+  const cache = new Map()
+  const cacheTimestamps = new Map()
+  const cacheAccessOrder = new Map()
+
+  // WeakMap para referências fracas
+  const weakRefs = enableWeakReferences ? new WeakMap() : null
+  const weakRefRegistry = enableWeakReferences ? new FinalizationRegistry((key) => {
+    memoryStats.weakRefsCount--
+  }) : null
+
+  // Intervalos
+  let gcIntervalId = null
+  let memoryMonitorId = null
+
+  /**
+   * Atualiza estatísticas de memória
+   */
+  const updateMemoryStats = () => {
+    if (!performance.memory) return
+
+    const memory = performance.memory
+    memoryStats.usedJSHeapSize = Math.round(memory.usedJSHeapSize / 1024 / 1024) // MB
+    memoryStats.totalJSHeapSize = Math.round(memory.totalJSHeapSize / 1024 / 1024) // MB
+    memoryStats.jsHeapSizeLimit = Math.round(memory.jsHeapSizeLimit / 1024 / 1024) // MB
+    memoryStats.percentage = Math.round((memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100)
+    memoryStats.cacheSize = cache.size
+  }
+
+  /**
+   * Força garbage collection (se disponível)
+   */
+  const forceGC = async () => {
+    if (window.gc) {
+      isOptimizing.value = true
+      
+      try {
+        const beforeMemory = performance.memory?.usedJSHeapSize || 0
+        
+        // Força GC
+        window.gc()
+        
+        // Aguarda um tick para atualizar métricas
+        await nextTick()
+        
+        const afterMemory = performance.memory?.usedJSHeapSize || 0
+        const freed = Math.round((beforeMemory - afterMemory) / 1024 / 1024) // MB
+        
+        memoryStats.lastGC = Date.now()
+        memoryStats.gcCount++
+        
+        // Adiciona ao histórico
+        gcHistory.value.push({
+          timestamp: Date.now(),
+          freedMemory: freed,
+          beforeMemory: Math.round(beforeMemory / 1024 / 1024),
+          afterMemory: Math.round(afterMemory / 1024 / 1024),
+          type: 'manual'
+        })
+        
+        // Mantém apenas os últimos 50 registros
+        if (gcHistory.value.length > 50) {
+          gcHistory.value = gcHistory.value.slice(-50)
+        }
+        
+        updateMemoryStats()
+        
+        return freed
+      } finally {
+        isOptimizing.value = false
+      }
+    }
+    
+    return 0
+  }
+
+  /**
+   * Limpa cache expirado
+   */
+  const cleanExpiredCache = () => {
+    const now = Date.now()
+    let cleaned = 0
+    
+    for (const [key, timestamp] of cacheTimestamps.entries()) {
+      if (now - timestamp > maxCacheAge) {
+        cache.delete(key)
+        cacheTimestamps.delete(key)
+        cacheAccessOrder.delete(key)
+        cleaned++
+        cacheStats.evictions++
+      }
+    }
+    
+    return cleaned
+  }
+
+  /**
+   * Limpa cache LRU quando excede o tamanho máximo
+   */
+  const cleanLRUCache = () => {
+    if (cache.size <= maxCacheSize) return 0
+    
+    let cleaned = 0
+    const sortedEntries = Array.from(cacheAccessOrder.entries())
+      .sort((a, b) => a[1] - b[1]) // Ordena por último acesso
+    
+    const toRemove = cache.size - maxCacheSize
+    for (let i = 0; i < toRemove && i < sortedEntries.length; i++) {
+      const [key] = sortedEntries[i]
+      cache.delete(key)
+      cacheTimestamps.delete(key)
+      cacheAccessOrder.delete(key)
+      cleaned++
+      cacheStats.evictions++
+    }
+    
+    return cleaned
+  }
+
+  /**
+   * Garbage collection automático
+   */
+  const autoGC = async () => {
+    updateMemoryStats()
+    
+    // Limpa cache expirado
+    const expiredCleaned = cleanExpiredCache()
+    
+    // Limpa cache LRU se necessário
+    const lruCleaned = cleanLRUCache()
+    
+    // Força GC se memória estiver alta
+    let gcFreed = 0
+    if (memoryStats.usedJSHeapSize > memoryThreshold) {
+      gcFreed = await forceGC()
+    }
+    
+    // Log da limpeza
+    if (expiredCleaned > 0 || lruCleaned > 0 || gcFreed > 0) {
+      console.log(`[Memory Optimization] Cleaned: ${expiredCleaned} expired, ${lruCleaned} LRU, ${gcFreed}MB freed`)
+    }
+    
+    return {
+      expiredCleaned,
+      lruCleaned,
+      gcFreed
+    }
+  }
+
+  /**
+   * Adiciona item ao cache
+   */
+  const setCache = (key, value) => {
+    const now = Date.now()
+    
+    // Remove item existente se houver
+    if (cache.has(key)) {
+      cache.delete(key)
+      cacheTimestamps.delete(key)
+    }
+    
+    // Adiciona novo item
+    cache.set(key, value)
+    cacheTimestamps.set(key, now)
+    cacheAccessOrder.set(key, now)
+    
+    // Limpa cache se necessário
+    cleanLRUCache()
+    
+    return value
+  }
+
+  /**
+   * Obtém item do cache
+   */
+  const getCache = (key) => {
+    if (cache.has(key)) {
+      const timestamp = cacheTimestamps.get(key)
+      const now = Date.now()
+      
+      // Verifica se não expirou
+      if (now - timestamp <= maxCacheAge) {
+        // Atualiza ordem de acesso
+        cacheAccessOrder.set(key, now)
+        cacheStats.hits++
+        
+        // Atualiza hit rate
+        const total = cacheStats.hits + cacheStats.misses
+        cacheStats.hitRate = Math.round((cacheStats.hits / total) * 100)
+        
+        return cache.get(key)
+      } else {
+        // Remove item expirado
+        cache.delete(key)
+        cacheTimestamps.delete(key)
+        cacheAccessOrder.delete(key)
+        cacheStats.evictions++
+      }
+    }
+    
+    cacheStats.misses++
+    
+    // Atualiza hit rate
+    const total = cacheStats.hits + cacheStats.misses
+    cacheStats.hitRate = Math.round((cacheStats.hits / total) * 100)
+    
+    return undefined
+  }
+
+  /**
+   * Remove item do cache
+   */
+  const deleteCache = (key) => {
+    const deleted = cache.delete(key)
+    if (deleted) {
+      cacheTimestamps.delete(key)
+      cacheAccessOrder.delete(key)
+    }
+    return deleted
+  }
+
+  /**
+   * Limpa todo o cache
+   */
+  const clearCache = () => {
+    const size = cache.size
+    cache.clear()
+    cacheTimestamps.clear()
+    cacheAccessOrder.clear()
+    cacheStats.evictions += size
+    return size
+  }
+
+  /**
+   * Adiciona referência fraca
+   */
+  const setWeakRef = (key, value) => {
+    if (!weakRefs || !weakRefRegistry) return false
+    
+    weakRefs.set(key, value)
+    weakRefRegistry.register(value, key)
+    memoryStats.weakRefsCount++
+    
+    return true
+  }
+
+  /**
+   * Obtém referência fraca
+   */
+  const getWeakRef = (key) => {
+    if (!weakRefs) return undefined
+    return weakRefs.get(key)
+  }
+
+  /**
+   * Remove referência fraca
+   */
+  const deleteWeakRef = (key) => {
+    if (!weakRefs) return false
+    
+    const deleted = weakRefs.delete(key)
+    if (deleted) {
+      memoryStats.weakRefsCount--
+    }
+    
+    return deleted
+  }
+
+  /**
+   * Otimiza objeto removendo propriedades undefined/null
+   */
+  const optimizeObject = (obj) => {
+    if (!obj || typeof obj !== 'object') return obj
+    
+    const optimized = {}
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined && value !== null) {
+        if (typeof value === 'object' && !Array.isArray(value)) {
+          optimized[key] = optimizeObject(value)
+        } else {
+          optimized[key] = value
+        }
+      }
+    }
+    
+    return optimized
+  }
+
+  /**
+   * Otimiza array removendo elementos undefined/null
+   */
+  const optimizeArray = (arr) => {
+    if (!Array.isArray(arr)) return arr
+    
+    return arr
+      .filter(item => item !== undefined && item !== null)
+      .map(item => {
+        if (typeof item === 'object' && !Array.isArray(item)) {
+          return optimizeObject(item)
+        } else if (Array.isArray(item)) {
+          return optimizeArray(item)
+        }
+        return item
+      })
+  }
+
+  /**
+   * Cria um proxy para monitorar acesso a propriedades
+   */
+  const createMonitoredObject = (obj, name = 'object') => {
+    const accessLog = new Map()
+    
+    return new Proxy(obj, {
+      get(target, prop) {
+        const now = Date.now()
+        accessLog.set(prop, now)
+        
+        // Remove logs antigos (mais de 1 minuto)
+        for (const [key, timestamp] of accessLog.entries()) {
+          if (now - timestamp > 60000) {
+            accessLog.delete(key)
+          }
+        }
+        
+        return target[prop]
+      },
+      
+      set(target, prop, value) {
+        target[prop] = value
+        accessLog.set(prop, Date.now())
+        return true
+      }
+    })
+  }
+
+  /**
+   * Debounce para funções
+   */
+  const debounce = (func, delay) => {
+    let timeoutId
+    const debouncedFunc = (...args) => {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => func.apply(this, args), delay)
+    }
+    
+    debouncedFunc.cancel = () => {
+      clearTimeout(timeoutId)
+    }
+    
+    return debouncedFunc
+  }
+
+  /**
+   * Throttle para funções
+   */
+  const throttle = (func, delay) => {
+    let lastCall = 0
+    return (...args) => {
+      const now = Date.now()
+      if (now - lastCall >= delay) {
+        lastCall = now
+        return func.apply(this, args)
+      }
+    }
+  }
+
+  // Computed properties
+  const memoryUsageLevel = computed(() => {
+    if (memoryStats.percentage < 30) return 'low'
+    if (memoryStats.percentage < 60) return 'medium'
+    if (memoryStats.percentage < 80) return 'high'
+    return 'critical'
+  })
+
+  const shouldOptimize = computed(() => {
+    return memoryStats.percentage > 70 || memoryStats.usedJSHeapSize > memoryThreshold
+  })
+
+  const optimizationRecommendations = computed(() => {
+    const recommendations = []
+    
+    if (cache.size > maxCacheSize * 0.8) {
+      recommendations.push('Cache está quase cheio - considere limpar')
+    }
+    
+    if (cacheStats.hitRate < 50) {
+      recommendations.push('Taxa de acerto do cache baixa - revise estratégia de cache')
+    }
+    
+    if (memoryStats.percentage > 80) {
+      recommendations.push('Uso de memória alto - execute garbage collection')
+    }
+    
+    if (gcHistory.value.length > 0) {
+      const recentGCs = gcHistory.value.filter(gc => Date.now() - gc.timestamp < 60000)
+      if (recentGCs.length > 5) {
+        recommendations.push('Muitos GCs recentes - verifique vazamentos de memória')
+      }
+    }
+    
+    return recommendations
+  })
+
+  // Watchers
+  watch(shouldOptimize, (should) => {
+    if (should && enableAutoGC) {
+      autoGC()
+    }
+  })
+
+  // Inicialização
+  const startOptimization = () => {
+    if (enableAutoGC && !gcIntervalId) {
+      gcIntervalId = setInterval(autoGC, gcInterval)
+    }
+    
+    if (enableMemoryMonitoring && !memoryMonitorId) {
+      memoryMonitorId = setInterval(updateMemoryStats, 5000) // A cada 5 segundos
+    }
+    
+    // Atualização inicial
+    updateMemoryStats()
+  }
+
+  const stopOptimization = () => {
+    if (gcIntervalId) {
+      clearInterval(gcIntervalId)
+      gcIntervalId = null
+    }
+    
+    if (memoryMonitorId) {
+      clearInterval(memoryMonitorId)
+      memoryMonitorId = null
+    }
+  }
+
+  // Cleanup
+  onUnmounted(() => {
+    stopOptimization()
+    clearCache()
+  })
+
+  // Auto-start se habilitado
+  if (enableAutoGC || enableMemoryMonitoring) {
+    startOptimization()
+  }
+
+  return {
+    // Estados
+    memoryStats,
+    isOptimizing,
+    gcHistory,
+    cacheStats,
+    
+    // Computed
+    memoryUsageLevel,
+    shouldOptimize,
+    optimizationRecommendations,
+    
+    // Métodos de GC
+    forceGC,
+    autoGC,
+    
+    // Métodos de cache
+    setCache,
+    getCache,
+    deleteCache,
+    clearCache,
+    cleanExpiredCache,
+    cleanLRUCache,
+    
+    // Métodos de WeakRef
+    setWeakRef,
+    getWeakRef,
+    deleteWeakRef,
+    
+    // Métodos de otimização
+    optimizeObject,
+    optimizeArray,
+    createMonitoredObject,
+    
+    // Utilitários
+    debounce,
+    throttle,
+    
+    // Controle
+    startOptimization,
+    stopOptimization,
+    updateMemoryStats
+  }
+}
+
+/**
+ * Composable específico para otimização de listas
+ */
+export function useListOptimization(options = {}) {
+  const {
+    maxItems = 1000,
+    chunkSize = 100,
+    enableVirtualization = true,
+    enablePagination = true
+  } = options
+
+  const {
+    setCache,
+    getCache,
+    optimizeArray,
+    debounce
+  } = useMemoryOptimization()
+
+  const items = ref([])
+  const visibleItems = ref([])
+  const currentPage = ref(1)
+  const itemsPerPage = ref(chunkSize)
+
+  // Otimiza lista removendo duplicatas e itens inválidos
+  const optimizeList = (list) => {
+    if (!Array.isArray(list)) return []
+    
+    // Remove duplicatas baseado em ID ou índice
+    const seen = new Set()
+    const optimized = list.filter(item => {
+      const key = item?.id || item?.key || JSON.stringify(item)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    
+    return optimizeArray(optimized)
+  }
+
+  // Carrega itens com paginação
+  const loadItems = debounce((newItems) => {
+    const optimized = optimizeList(newItems)
+    
+    // Cache da lista otimizada
+    setCache('optimized-list', optimized)
+    
+    items.value = optimized
+    updateVisibleItems()
+  }, 100)
+
+  // Atualiza itens visíveis
+  const updateVisibleItems = () => {
+    if (!enablePagination) {
+      visibleItems.value = items.value
+      return
+    }
+    
+    const start = (currentPage.value - 1) * itemsPerPage.value
+    const end = start + itemsPerPage.value
+    visibleItems.value = items.value.slice(start, end)
+  }
+
+  // Navega para página
+  const goToPage = (page) => {
+    const maxPage = Math.ceil(items.value.length / itemsPerPage.value)
+    currentPage.value = Math.max(1, Math.min(page, maxPage))
+    updateVisibleItems()
+  }
+
+  // Computed properties
+  const totalPages = computed(() => {
+    return Math.ceil(items.value.length / itemsPerPage.value)
+  })
+
+  const hasNextPage = computed(() => {
+    return currentPage.value < totalPages.value
+  })
+
+  const hasPrevPage = computed(() => {
+    return currentPage.value > 1
+  })
+
+  // Watchers
+  watch([currentPage, itemsPerPage], updateVisibleItems)
+
+  return {
+    items,
+    visibleItems,
+    currentPage,
+    itemsPerPage,
+    totalPages,
+    hasNextPage,
+    hasPrevPage,
+    
+    loadItems,
+    optimizeList,
+    updateVisibleItems,
+    goToPage
+  }
+}
+
+/**
+ * Composable para monitoramento de vazamentos de memória
+ */
+export function useMemoryLeakDetector(options = {}) {
+  const {
+    checkInterval = 30000, // 30 segundos
+    thresholdIncrease = 10, // 10MB
+    maxChecks = 10
+  } = options
+
+  const memoryHistory = ref([])
+  const leakDetected = ref(false)
+  const leakDetails = ref(null)
+  
+  let intervalId = null
+
+  const checkForLeaks = () => {
+    if (!performance.memory) return
+
+    const currentMemory = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024)
+    const timestamp = Date.now()
+    
+    memoryHistory.value.push({
+      memory: currentMemory,
+      timestamp
+    })
+    
+    // Mantém apenas os últimos registros
+    if (memoryHistory.value.length > maxChecks) {
+      memoryHistory.value = memoryHistory.value.slice(-maxChecks)
+    }
+    
+    // Verifica vazamento (aumento constante)
+    if (memoryHistory.value.length >= 5) {
+      const recent = memoryHistory.value.slice(-5)
+      const increases = recent.slice(1).every((current, index) => {
+        const previous = recent[index]
+        return current.memory > previous.memory
+      })
+      
+      if (increases) {
+        const totalIncrease = recent[recent.length - 1].memory - recent[0].memory
+        if (totalIncrease > thresholdIncrease) {
+          leakDetected.value = true
+          leakDetails.value = {
+            detectedAt: timestamp,
+            memoryIncrease: totalIncrease,
+            timespan: timestamp - recent[0].timestamp,
+            samples: recent.length
+          }
+        }
+      }
+    }
+  }
+
+  const startDetection = () => {
+    if (!intervalId) {
+      intervalId = setInterval(checkForLeaks, checkInterval)
+      checkForLeaks() // Primeira verificação imediata
+    }
+  }
+
+  const stopDetection = () => {
+    if (intervalId) {
+      clearInterval(intervalId)
+      intervalId = null
+    }
+  }
+
+  const resetDetection = () => {
+    leakDetected.value = false
+    leakDetails.value = null
+    memoryHistory.value = []
+  }
+
+  // Auto-start
+  startDetection()
+
+  // Cleanup
+  onUnmounted(() => {
+    stopDetection()
+  })
+
+  return {
+    memoryHistory,
+    leakDetected,
+    leakDetails,
+    
+    checkForLeaks,
+    startDetection,
+    stopDetection,
+    resetDetection
+  }
+}
