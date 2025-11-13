@@ -24,8 +24,7 @@ const lazyLoad = (importer, chunkName) => {
 }
 
 // Componentes com lazy loading otimizado
-const Assets = () => import('@/views/Assets.vue')
-const AssetsList = () => import('@/views/assets/Assets.vue')
+const Assets = () => import('@/views/assets/Assets.vue')
 const NetworkDiscovery = lazyLoad(() => import('@/views/NetworkDiscovery.vue'), 'network-discovery')
 const Movements = lazyLoad(() => import('@/views/Movements.vue'), 'movements')
 const MovementsList = lazyLoad(() => import('@/views/movements/Movements.vue'), 'movements-list')
@@ -49,6 +48,9 @@ const Machines = lazyLoad(() => import('@/views/Machines.vue'), 'machines')
 const MonitoringView = lazyLoad(() => import('@/views/MonitoringView.vue'), 'monitoring')
 const DesignSystemDemo = lazyLoad(() => import('@/components/demo/DesignSystemDemo.vue'), 'design-system-demo')
 const Purchases = lazyLoad(() => import('@/views/purchases/Purchases.vue'), 'purchases')
+const Licenses = lazyLoad(() => import('@/views/licenses/Licenses.vue'), 'licenses')
+const Software = lazyLoad(() => import('@/views/software/Software.vue'), 'software')
+const Payments = lazyLoad(() => import('@/views/payments/Payments.vue'), 'payments')
 
 const routes = [
   {
@@ -119,37 +121,18 @@ const routes = [
         ]
       }
     },
-      {
-        path: '/assets',
-        name: 'Assets',
-        component: Assets,
-        meta: { 
-          title: 'Ativos',
-          breadcrumb: [
-            { text: 'Dashboard', to: '/' },
-            { text: 'Ativos', to: '/assets' }
-          ]
-        },
-        children: [
-          {
-            path: '',
-            name: 'AssetsRedirect',
-            redirect: '/assets/list'
-          },
-          {
-            path: 'list',
-            name: 'AssetsList',
-            component: AssetsList,
-            meta: { 
-              title: 'Lista de Ativos',
-              breadcrumb: [
-                { text: 'Dashboard', to: '/' },
-                { text: 'Ativos', to: '/assets' }
-              ]
-            }
-          }
+    {
+      path: '/assets',
+      name: 'Assets',
+      component: Assets,
+      meta: { 
+        title: 'Lista de Ativos',
+        breadcrumb: [
+          { text: 'Dashboard', to: '/' },
+          { text: 'Ativos', to: '/assets' }
         ]
-      },
+      }
+    },
       {
         path: '/assets/network-discovery',
         name: 'NetworkDiscovery',
@@ -356,6 +339,42 @@ const routes = [
           breadcrumb: [
             { text: 'Dashboard', to: '/' },
             { text: 'Compras', to: '/purchases' }
+          ]
+        }
+      },
+      {
+        path: '/licenses',
+        name: 'Licenses',
+        component: Licenses,
+        meta: {
+          title: 'Licenças',
+          breadcrumb: [
+            { text: 'Dashboard', to: '/' },
+            { text: 'Licenças', to: '/licenses' }
+          ]
+        }
+      },
+      {
+        path: '/software',
+        name: 'Software',
+        component: Software,
+        meta: {
+          title: 'Software',
+          breadcrumb: [
+            { text: 'Dashboard', to: '/' },
+            { text: 'Software', to: '/software' }
+          ]
+        }
+      },
+      {
+        path: '/payments',
+        name: 'Payments',
+        component: Payments,
+        meta: {
+          title: 'Pagamentos',
+          breadcrumb: [
+            { text: 'Dashboard', to: '/' },
+            { text: 'Pagamentos', to: '/payments' }
           ]
         }
       },

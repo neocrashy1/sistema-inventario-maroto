@@ -2,6 +2,7 @@ import logger from '@/utils/logger'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { assetsAPI, handleAPIError } from '@/services/api'
+import { fetchDellInfo } from '@/utils/dell'
 
 export const useAssetsStore = defineStore('assets', () => {
   // State
@@ -253,6 +254,7 @@ export const useAssetsStore = defineStore('assets', () => {
 
   // Getters
   const filteredAssets = computed(() => {
+    if (!Array.isArray(assets.value)) return []
     let result = assets.value
 
     if (filters.value.search) {
@@ -283,12 +285,13 @@ export const useAssetsStore = defineStore('assets', () => {
     return result
   })
 
-  const totalAssets = computed(() => assets.value.length)
+  const totalAssets = computed(() => Array.isArray(assets.value) ? assets.value.length : 0)
   const totalValue = computed(() => 
-    assets.value.reduce((sum, asset) => sum + asset.value, 0)
+    Array.isArray(assets.value) ? assets.value.reduce((sum, asset) => sum + asset.value, 0) : 0
   )
 
   const assetsByStatus = computed(() => {
+    if (!Array.isArray(assets.value)) return {}
     const statusCount = {}
     assets.value.forEach(asset => {
       statusCount[asset.status] = (statusCount[asset.status] || 0) + 1
@@ -297,6 +300,7 @@ export const useAssetsStore = defineStore('assets', () => {
   })
 
   const assetsByCategory = computed(() => {
+    if (!Array.isArray(assets.value)) return {}
     const categoryCount = {}
     assets.value.forEach(asset => {
       categoryCount[asset.category] = (categoryCount[asset.category] || 0) + 1
@@ -384,14 +388,22 @@ export const useAssetsStore = defineStore('assets', () => {
     
     try {
       const response = await assetsAPI.getAll(filters.value)
-      assets.value = response.data.items || response.data
-      return { success: true, data: response.data }
+      // Ensure response.data is an array
+      const data = response.data.items || response.data
+      assets.value = Array.isArray(data) ? data : []
+      
+      // If no data or wrong format, use mock data
+      if (!Array.isArray(data) || data.length === 0) {
+        assets.value = [...mockAssets]
+      }
+      
+      return { success: true, data: assets.value }
     } catch (err) {
       const apiError = handleAPIError(err)
       error.value = apiError.message
       
       // Fallback to mock data if API fails
-      logger.warn('API failed, using mock data:', apiError.message)
+      console.warn('API failed, using mock data:', apiError.message)
       assets.value = [...mockAssets]
       
       return { success: false, error: apiError.message }
@@ -436,6 +448,17 @@ export const useAssetsStore = defineStore('assets', () => {
     try {
       const response = await assetsAPI.create(assetData)
       const newAsset = response.data
+      // Se ativo da Dell com serviceTag, enriquecer dados Dell
+      if ((newAsset.brand || assetData.brand)?.toLowerCase() === 'dell' && (newAsset.serviceTag || assetData.serviceTag)) {
+        try {
+          const dellInfo = await fetchDellInfo(newAsset.serviceTag || assetData.serviceTag)
+          if (dellInfo) {
+            newAsset.dellInfo = { ...dellInfo }
+          }
+        } catch (e) {
+          logger.warn('Dell enrichment failed', e.message || e)
+        }
+      }
       assets.value.push(newAsset)
       return { success: true, data: newAsset }
     } catch (err) {
@@ -447,6 +470,13 @@ export const useAssetsStore = defineStore('assets', () => {
         ...assetData,
         createdAt: assetData?.createdAt || new Date(),
         updatedAt: assetData?.updatedAt || new Date()
+      }
+      // Enriquecer localmente se for Dell
+      if ((localAsset.brand || '').toLowerCase() === 'dell' && localAsset.serviceTag) {
+        try {
+          const dellInfo = await fetchDellInfo(localAsset.serviceTag)
+          if (dellInfo) localAsset.dellInfo = { ...dellInfo }
+        } catch (_) { /* noop */ }
       }
       assets.value.push(localAsset)
       return { success: true, data: localAsset, error: apiError.message }
@@ -462,7 +492,16 @@ export const useAssetsStore = defineStore('assets', () => {
     try {
       const response = await assetsAPI.update(id, assetData)
       const updatedAsset = response.data
-      
+      // Enriquecer se for Dell e tiver serviceTag
+      if ((updatedAsset.brand || assetData.brand || '').toLowerCase() === 'dell' && (updatedAsset.serviceTag || assetData.serviceTag)) {
+        try {
+          const dellInfo = await fetchDellInfo(updatedAsset.serviceTag || assetData.serviceTag)
+          if (dellInfo) updatedAsset.dellInfo = { ...dellInfo }
+        } catch (e) {
+          logger.warn('Dell enrichment failed (update)', e.message || e)
+        }
+      }
+
       const index = assets.value.findIndex(asset => asset.id === id)
       if (index !== -1) {
         assets.value[index] = updatedAsset
@@ -475,7 +514,14 @@ export const useAssetsStore = defineStore('assets', () => {
       // Fallback local (dev): atualiza no estado mesmo sem API
       const index = assets.value.findIndex(asset => asset.id === id)
       if (index !== -1) {
+        // merge e enriquecer localmente se necessário
         assets.value[index] = { ...assets.value[index], ...assetData, id }
+        if ((assets.value[index].brand || '').toLowerCase() === 'dell' && assets.value[index].serviceTag) {
+          try {
+            const dellInfo = await fetchDellInfo(assets.value[index].serviceTag)
+            if (dellInfo) assets.value[index].dellInfo = { ...dellInfo }
+          } catch (_) { /* noop */ }
+        }
         return { success: true, data: assets.value[index], error: apiError.message }
       }
       return { success: false, error: apiError.message, errors: apiError.errors }

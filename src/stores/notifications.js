@@ -8,15 +8,17 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const lastUpdate = ref(null)
 
   // Computed
-  const unreadCount = computed(() => 
-    notifications.value.filter(n => !n.read).length
-  )
+  const unreadCount = computed(() => {
+    if (!Array.isArray(notifications.value)) return 0
+    return notifications.value.filter(n => !n.read).length
+  })
 
-  const recentNotifications = computed(() => 
-    notifications.value
+  const recentNotifications = computed(() => {
+    if (!Array.isArray(notifications.value)) return []
+    return notifications.value
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 10)
-  )
+  })
 
   // Actions
   const addNotification = (notification) => {

@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  tgw:
+    image: oobabooga/text-generation-webui:latest
+    container_name: levitii_tgw
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./models:/workspace/models
+      - ./extensions:/workspace/extensions
+      - ./configs:/workspace/configs
+    environment:
+      # Do NOT use --share in production; this exposes the UI publicly.
+      - CLI_ARGS=--listen --port 7860
+    restart: unless-stopped
+
+  agent:
+    build: ./agent
+    container_name: levitii_agent
+    depends_on:
+      - tgw
+    volumes:
+      - ../../:/workspace/project:rw
+    environment:
+      - TGW_URL=http://tgw:7860
+      - AUTONOMOUS=false
+    restart: unless-stopped

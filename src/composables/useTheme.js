@@ -21,7 +21,18 @@ export function useTheme() {
 
     // Alternar Vuetify theme
     const target = theme.value === 'dark' ? 'levitiisThemeDark' : 'levitiisLight'
-    if (vuetifyTheme?.global?.name) {
+    // Prefer the official API when available (Vuetify >= 3.x): theme.change(name)
+    if (typeof vuetifyTheme?.change === 'function') {
+      try {
+        vuetifyTheme.change(target)
+      } catch (e) {
+        // Fallback to manipulating the global name ref if change() fails
+        if (vuetifyTheme?.global?.name) {
+          vuetifyTheme.global.name.value = target
+        }
+      }
+    } else if (vuetifyTheme?.global?.name) {
+      // Older approach (works but may be deprecated)
       vuetifyTheme.global.name.value = target
     }
   }

@@ -402,7 +402,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
       const response = await cachedAPI.dashboard.getAlerts({
         forceRefresh
       })
-      alerts.value = response.data.items || response.data
+      const data = response.data.items || response.data
+      alerts.value = Array.isArray(data) ? data : []
     } catch (err) {
       logger.warn('Failed to fetch alerts from API, using mock data')
       await fetchAlertsFromMock()

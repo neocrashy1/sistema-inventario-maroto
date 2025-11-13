@@ -48,6 +48,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import NotificationCenter from '@/components/common/NotificationCenter.vue'
 import UserProfile from '@/components/auth/UserProfile.vue'
+import { formatDistanceToNow } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 defineProps({
   sidebarCollapsed: {
@@ -120,15 +122,7 @@ const formatTime = (time) => {
   })
 }
 
-const closeDropdowns = (event) => {
-  if (!event.target.closest('.notification-dropdown')) {
-    showNotifications.value = false
-  }
-}
-
 onMounted(() => {
-  document.addEventListener('click', closeDropdowns)
-  
   // Inicializa o sistema de notificações
   notificationsStore.loadInitialNotifications()
   notificationsStore.connectToNotifications()
@@ -136,7 +130,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', closeDropdowns)
   notificationsStore.disconnectFromNotifications()
 })
 </script>

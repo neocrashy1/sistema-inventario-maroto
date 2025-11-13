@@ -1,7 +1,7 @@
 {
-  "name": "levitiis-asset-management-system",
+  "name": "invetario-maroto",
   "version": "1.0.0",
-  "description": "Sistema de Gerenciamento de Ativos da Levitiis",
+  "description": "Sistema de Inventário Maroto",
   "type": "module",
   "scripts": {
     "dev": "vite",

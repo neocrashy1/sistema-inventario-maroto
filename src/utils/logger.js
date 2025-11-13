@@ -46,7 +46,7 @@ class Logger {
     const logData = this.formatMessage(LOG_LEVELS.ERROR, message, context)
     
     if (this.isDevelopment) {
-      logger.error(`[${logData.timestamp}] ERROR: ${message}`, context)
+      console.error(`[${logData.timestamp}] ERROR: ${message}`, context)
     }
     
     // Em produção, enviar para serviço de logging
@@ -61,7 +61,7 @@ class Logger {
     const logData = this.formatMessage(LOG_LEVELS.WARN, message, context)
     
     if (this.isDevelopment) {
-      logger.warn(`[${logData.timestamp}] WARN: ${message}`, context)
+      console.warn(`[${logData.timestamp}] WARN: ${message}`, context)
     }
     
     if (this.isProduction) {
@@ -120,7 +120,7 @@ class Logger {
     } catch (error) {
       // Fallback silencioso para não quebrar a aplicação
       if (this.isDevelopment) {
-        logger.error('Failed to send log to service:', error)
+        console.error('Failed to send log to service:', error)
       }
     }
   }

@@ -33,18 +33,8 @@ export default defineConfig({
     port: Number(process.env.PORT) || 3000,
     open: true,
     strictPort: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        secure: false
-      },
-      '/analytics': {
-        target: 'http://localhost:8001',
-        changeOrigin: true,
-        secure: false
-      }
-    }
+    // Proxy desabilitado - sistema usa dados mock do frontend
+    // Use em localhost:3000 sem necessidade de backend
   },
   build: {
     outDir: 'dist',

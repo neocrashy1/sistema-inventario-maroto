@@ -107,16 +107,26 @@
             <button 
               class="btn-icon" 
               :class="{ active: viewMode === 'table' }"
-              @click="viewMode = 'table'"
+              @click="setViewMode('table')"
+              title="Visualização em Tabela"
             >
               <i class="fas fa-list"></i>
             </button>
             <button 
               class="btn-icon" 
               :class="{ active: viewMode === 'grid' }"
-              @click="viewMode = 'grid'"
+              @click="setViewMode('grid')"
+              title="Visualização em Grade"
             >
               <i class="fas fa-th"></i>
+            </button>
+            <button 
+              class="btn-icon" 
+              :class="{ active: viewMode === 'continue' }"
+              @click="setViewMode('continue')"
+              title="Modo Continue - Mantém sua posição ao navegar"
+            >
+              <i class="fas fa-scroll"></i>
             </button>
           </div>
         </div>
@@ -180,6 +190,8 @@
                   <span class="asset-name">{{ asset.name }}</span>
                   <span class="asset-description">{{ asset.brand }} {{ asset.model }}</span>
                   <span class="asset-serial" v-if="asset.serialNumber">S/N: {{ asset.serialNumber }}</span>
+                  <span class="asset-service" v-if="asset.serviceTag">S/T: {{ asset.serviceTag }}</span>
+                  <small v-if="asset.dellInfo" class="asset-dell-info">{{ asset.dellInfo.entitlement || '' }} {{ asset.dellInfo.supportEnd ? ('- até ' + formatDate(asset.dellInfo.supportEnd)) : '' }}</small>
                   <span class="asset-mac" v-if="asset.category === 'Informática' && asset.mac">MAC: {{ asset.mac }}</span>
                   <span class="asset-entry" v-if="asset.entryDate">Entrada: {{ formatDate(asset.entryDate) }}</span>
                 </div>
@@ -258,7 +270,7 @@
       </div>
       
       <!-- Grid View -->
-      <div v-else class="grid-view">
+      <div v-if="viewMode === 'grid'" class="grid-view">
         <div v-for="asset in paginatedAssets" :key="asset.id" class="asset-card">
           <div class="asset-card-header">
             <input type="checkbox" v-model="selectedAssets" :value="asset.id">
@@ -276,7 +288,15 @@
               <h3 class="asset-name">{{ asset.name }}</h3>
               <p class="asset-code">{{ asset.tag }}</p>
               <p class="asset-brand">{{ asset.brand }} {{ asset.model }}</p>
-              <p class="asset-serial">S/N: {{ asset.serialNumber }}</p>
+              <p class="asset-serial" v-if="asset.serialNumber">S/N: {{ asset.serialNumber }}</p>
+              <p class="asset-service" v-if="asset.serviceTag">Service Tag: {{ asset.serviceTag }}</p>
+              <div v-if="asset.dellInfo" class="meta-item">
+                <i class="fas fa-headset"></i>
+                <span>
+                  {{ asset.dellInfo.entitlement || 'Suporte Dell' }}
+                  <small v-if="asset.dellInfo.supportEnd"> - até {{ formatDate(asset.dellInfo.supportEnd) }}</small>
+                </span>
+              </div>
               
               <div class="asset-meta">
                 <div class="meta-item">
@@ -337,6 +357,109 @@
               </button>
             </div>
           </div>
+        </div>
+        
+        <!-- Pagination Controls for Grid View -->
+        <div class="pagination-controls" v-if="totalPages > 1">
+          <button 
+            class="btn btn-sm" 
+            :disabled="currentPage === 1" 
+            @click="prevPage"
+          >
+            <i class="fas fa-chevron-left"></i> Anterior
+          </button>
+          
+          <span class="pagination-info">
+            Página {{ currentPage }} de {{ totalPages }}
+            ({{ filteredAssets.length }} ativos no total)
+          </span>
+          
+          <button 
+            class="btn btn-sm" 
+            :disabled="currentPage === totalPages" 
+            @click="nextPage"
+          >
+            Próxima <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Continue View -->
+      <div v-if="viewMode === 'continue'" class="grid-view continue-view" ref="scrollContainer" @scroll="handleScroll">
+        <div v-for="asset in filteredAssets" :key="asset.id" class="asset-card">
+          <div class="asset-card-header">
+            <input type="checkbox" v-model="selectedAssets" :value="asset.id">
+            <span class="badge" :class="getStatusClass(asset.status)">
+              {{ asset.status }}
+            </span>
+          </div>
+          
+          <div class="asset-card-body">
+            <div class="asset-icon">
+              <i :class="getCategoryIcon(asset.category)"></i>
+            </div>
+            
+            <div class="asset-details">
+              <h3 class="asset-name">{{ asset.name }}</h3>
+              <p class="asset-code">{{ asset.tag }}</p>
+              <p class="asset-brand">{{ asset.brand }} {{ asset.model }}</p>
+              <p class="asset-serial" v-if="asset.serialNumber">S/N: {{ asset.serialNumber }}</p>
+              <p class="asset-service" v-if="asset.serviceTag">Service Tag: {{ asset.serviceTag }}</p>
+              
+              <div class="asset-meta">
+                <div class="meta-item">
+                  <i class="fas fa-tag"></i>
+                  <span>{{ asset.category }} - {{ asset.subcategory }}</span>
+                </div>
+                <div class="meta-item">
+                  <i class="fas fa-map-marker-alt"></i>
+                  <span>{{ asset.location }}</span>
+                </div>
+                <div class="meta-item">
+                  <i class="fas fa-user"></i>
+                  <span>{{ asset.responsible }}</span>
+                </div>
+                <div class="meta-item">
+                  <i class="fas fa-shield-alt"></i>
+                  <span class="warranty-status" :class="getWarrantyStatusClass(asset.warranty)">
+                    Garantia: {{ asset.warranty?.status || 'N/A' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="asset-card-footer">
+            <button class="btn btn-sm btn-outline" @click="viewAsset(asset)">
+              <i class="fas fa-eye"></i>
+              Ver Detalhes
+            </button>
+            <div class="card-actions">
+              <button class="btn-icon" @click="editAsset(asset)" title="Editar">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn-icon" @click="moveAsset(asset)" title="Movimentar">
+                <i class="fas fa-exchange-alt"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Continue View Info -->
+        <div class="continue-info">
+          <div class="continue-stats">
+            <p><i class="fas fa-info-circle"></i> Modo Continue Ativo</p>
+            <p class="continue-desc">Sua posição será mantida ao navegar</p>
+            <p class="continue-count">{{ filteredAssets.length }} ativos disponíveis</p>
+          </div>
+          
+          <button 
+            class="btn btn-sm btn-outline" 
+            @click="scrollToTop"
+            v-if="scrollPosition > 500"
+          >
+            <i class="fas fa-arrow-up"></i> Voltar ao Topo
+          </button>
         </div>
       </div>
       
@@ -509,20 +632,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import useValidation from '@/composables/useValidation'
 import { useAssetsStore } from '@/stores/assets'
 import { usePageLoading } from '@/composables/useLoading'
 import { useToast } from '@/composables/useToast'
+import { useViewPreferences } from '@/composables/useViewPreferences'
 import LoadingState from '@/components/common/LoadingState.vue'
 import SkeletonLoader from '@/components/common/SkeletonLoader.vue'
 import VirtualList from '@/components/common/VirtualList.vue'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import logger from '@/utils/logger'
 
 const assetsStore = useAssetsStore()
 const { isLoading, loadPage } = usePageLoading()
 const { success, error: toastError } = useToast()
+
+// View preferences with persistence
+const viewPreferences = useViewPreferences('assets')
 
 // Reactive data
 const searchQuery = ref('')
@@ -530,10 +658,13 @@ const selectedCategory = ref('')
 const selectedStatus = ref('')
 const selectedLocation = ref('')
 const selectedDepartment = ref('')
-const viewMode = ref('table')
+const viewMode = computed(() => viewPreferences.viewMode.value)
 const selectedAssets = ref([])
 const selectAll = ref(false)
 const showAddModal = ref(false)
+const scrollContainer = ref(null)
+const currentPage = ref(1)
+const itemsPerPage = ref(20)
 
 // Edit modal state
 const showEditModal = ref(false)
@@ -542,6 +673,8 @@ const editForm = ref({
   tag: '',
   name: '',
   description: '',
+  brand: '',
+  serviceTag: '',
   category: '',
   location: '',
   value: 0,
@@ -550,16 +683,19 @@ const editForm = ref({
 
 // Dynamic categories from existing assets
 const categories = computed(() => {
+  if (!Array.isArray(assetsStore.assets)) return []
   const unique = [...new Set(assetsStore.assets.map(a => a.category).filter(Boolean))]
   return unique.sort()
 })
 
 const locations = computed(() => {
+  if (!Array.isArray(assetsStore.assets)) return []
   const unique = [...new Set(assetsStore.assets.map(a => a.location).filter(Boolean))]
   return unique.sort()
 })
 
 const departments = computed(() => {
+  if (!Array.isArray(assetsStore.assets)) return []
   const unique = [...new Set(assetsStore.assets.map(a => a.department).filter(Boolean))]
   return unique.sort()
 })
@@ -569,6 +705,8 @@ const newAsset = ref({
   tag: '',
   name: '',
   description: '',
+  brand: '',
+  serviceTag: '',
   category: '',
   location: '',
   value: 0,
@@ -581,6 +719,28 @@ const { validationErrors, validateAsset, clearErrors } = useValidation()
 // Computed properties
 const filteredAssets = computed(() => {
   return assetsStore.filteredAssets
+})
+
+// Pagination for grid and continue view
+const totalPages = computed(() => {
+  return Math.ceil(filteredAssets.value.length / itemsPerPage.value)
+})
+
+const paginatedAssets = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredAssets.value.slice(start, end)
+})
+
+const continueViewAssets = computed(() => {
+  // In continue mode, show all assets up to the current scroll position
+  if (viewMode.value === 'continue') {
+    // Calculate how many items to show based on scroll position
+    const scrollPos = viewPreferences.scrollPosition.value
+    const approximateItems = Math.floor(scrollPos / 100) + itemsPerPage.value
+    return filteredAssets.value.slice(0, approximateItems)
+  }
+  return []
 })
 
 // Methods
@@ -605,11 +765,58 @@ const clearFilters = () => {
 
 const toggleSelectAll = () => {
   if (selectAll.value) {
-    selectedAssets.value = filteredAssets.value.map(asset => asset.id)
+    const assetsToSelect = viewMode.value === 'continue' 
+      ? continueViewAssets.value 
+      : viewMode.value === 'grid' 
+      ? paginatedAssets.value 
+      : filteredAssets.value
+    selectedAssets.value = assetsToSelect.map(asset => asset.id)
   } else {
     selectedAssets.value = []
   }
 }
+
+// View mode toggle
+const setViewMode = (mode) => {
+  viewPreferences.setViewMode(mode)
+  if (mode === 'continue') {
+    currentPage.value = 1
+    nextTick(() => {
+      viewPreferences.restoreScrollPosition(scrollContainer.value)
+    })
+  }
+}
+
+// Pagination
+const goToPage = (page) => {
+  currentPage.value = Math.max(1, Math.min(page, totalPages.value))
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+
+const prevPage = () => {
+  if (currentPage.value > 1) currentPage.value--
+}
+
+// Save scroll position for continue mode
+const handleScroll = (event) => {
+  if (viewMode.value === 'continue') {
+    viewPreferences.saveScrollPosition(event.target)
+  }
+}
+
+// Scroll to top function
+const scrollToTop = () => {
+  if (scrollContainer.value) {
+    scrollContainer.value.scrollTop = 0
+    viewPreferences.scrollPosition.value = 0
+  }
+}
+
+// Update scroll position reactive
+const scrollPosition = computed(() => viewPreferences.scrollPosition.value || 0)
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -680,8 +887,6 @@ const isMaintenanceDue = (maintenance) => {
   return nextDate <= thirtyDaysFromNow && nextDate >= today
 }
 
-import logger from '@/utils/logger'
-
 const viewAsset = (asset) => {
   // Navigate to asset details
   logger.userAction('view_asset', { id: asset.id, name: asset.name })
@@ -693,6 +898,8 @@ const editAsset = (asset) => {
     tag: asset.tag || '',
     name: asset.name || '',
     description: asset.description || '',
+    brand: asset.brand || '',
+    serviceTag: asset.serviceTag || (asset.dellInfo?.serviceTag) || '',
     category: asset.category || '',
     location: asset.location || '',
     value: typeof asset.value === 'number' ? asset.value : Number(asset.value || 0),
@@ -717,6 +924,8 @@ const saveEdit = async () => {
       tag: editForm.value.tag,
       name: editForm.value.name,
       description: editForm.value.description,
+      brand: editForm.value.brand,
+      serviceTag: editForm.value.serviceTag,
       category: editForm.value.category,
       location: editForm.value.location,
       value: editForm.value.value,
@@ -764,6 +973,8 @@ const addAsset = async () => {
       tag: '',
       name: '',
       description: '',
+      brand: '',
+      serviceTag: '',
       category: '',
       location: '',
       value: 0,
@@ -792,6 +1003,12 @@ const loadMoreAssets = async () => {
 onMounted(async () => {
   await loadPage(async () => {
     await assetsStore.fetchAssets()
+    
+    // Restore view state if in continue mode
+    if (viewMode.value === 'continue') {
+      await nextTick()
+      viewPreferences.restoreScrollPosition(scrollContainer.value)
+    }
   })
 })
 </script>
@@ -1498,5 +1715,70 @@ onMounted(async () => {
   .grid-view {
     grid-template-columns: 1fr;
   }
+}
+
+/* Continue View Styles */
+.continue-view {
+  max-height: 70vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.continue-info {
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  margin: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  border: 2px dashed var(--primary-color-light);
+  flex-wrap: wrap;
+}
+
+.continue-stats p {
+  margin: var(--spacing-xs) 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.continue-stats p:first-child {
+  font-weight: 600;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.continue-stats p:first-child i {
+  color: var(--primary-color);
+}
+
+.continue-desc {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.continue-count {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Pagination Controls */
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 </style>

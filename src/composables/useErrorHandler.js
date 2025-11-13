@@ -218,8 +218,11 @@ export function useErrorHandler() {
       logger.info(`[${context}] ${message}`, { status, error })
     }
 
-    const dedupeKey = getDedupeKey(error, message)
-    showError(message, { details, dedupeKey })
+  // Para erros de rede, usar uma dedupeKey estável por host/URL (ou global)
+  // Isso evita que pequenas variações na mensagem ou timestamps gerem
+  // múltiplos toasts idênticos em curtos intervalos.
+  const dedupeKey = error?.config?.url ? `net:${error.config.url}` : 'net:global'
+  showError(message, { details, dedupeKey })
     markHandled(error)
     return { type: 'network', context, message, details, status }
   }

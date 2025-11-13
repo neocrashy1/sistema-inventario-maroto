@@ -308,6 +308,36 @@
           <i class="fas fa-shopping-cart" aria-hidden="true"></i>
           <span v-show="!isCollapsed">Compras</span>
         </router-link>
+        
+        <router-link 
+          to="/licenses" 
+          class="nav-item"
+          :class="{ active: $route.name === 'Licenses' }"
+          @click="closeMobileMenu"
+        >
+          <i class="fas fa-key" aria-hidden="true"></i>
+          <span v-show="!isCollapsed">Licenças</span>
+        </router-link>
+
+        <router-link 
+          to="/software" 
+          class="nav-item"
+          :class="{ active: $route.name === 'Software' }"
+          @click="closeMobileMenu"
+        >
+          <i class="fas fa-code-branch" aria-hidden="true"></i>
+          <span v-show="!isCollapsed">Software</span>
+        </router-link>
+
+        <router-link 
+          to="/payments" 
+          class="nav-item"
+          :class="{ active: $route.name === 'Payments' }"
+          @click="closeMobileMenu"
+        >
+          <i class="fas fa-receipt" aria-hidden="true"></i>
+          <span v-show="!isCollapsed">Pagamentos</span>
+        </router-link>
       </div>
       
       <!-- Relatórios -->

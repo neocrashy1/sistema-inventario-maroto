@@ -13,12 +13,12 @@ class Settings(BaseSettings):
     """Application settings"""
     
     # Application
-    APP_NAME: str = "Sistema Inventario Levitiis API"
+    APP_NAME: str = "Invetario Maroto API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
     API_V1_STR: str = "/api/v1"
-    HOST: str = "127.0.0.1"
+    HOST: str = "0.0.0.0"  # Aceita conexões de qualquer IP
     PORT: int = 8000
     
     # Security
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     ASYNC_DATABASE_URL: Optional[str] = None
     
     # CORS
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8080,http://localhost:5173"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8080,http://localhost:5173,http://172.30.0.61:3000"
     
     def get_cors_origins(self) -> List[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
@@ -79,6 +79,17 @@ class Settings(BaseSettings):
     # API Key Auth for agents
     API_KEY_HEADER_NAME: str = "X-API-Key"
     AGENT_API_KEYS: Optional[str] = None  # Comma-separated list of allowed API keys
+    
+    # AI Configuration
+    AI_ENABLED: bool = True
+    AI_PROVIDER: str = "llama"  # llama ou huggingface
+    AI_MODEL: str = "gpt2"  # usado apenas para huggingface
+    AI_MAX_LENGTH: int = 100
+    AI_TEMPERATURE: float = 0.7
+    
+    # LLaMA Configuration
+    LLAMA_API_URL: str = "http://node01:8000"  # URL do servidor LLaMA
+    LLAMA_API_TIMEOUT: int = 30  # timeout em segundos
 
     @field_validator("AGENT_API_KEYS")
     def normalize_agent_api_keys(cls, v):

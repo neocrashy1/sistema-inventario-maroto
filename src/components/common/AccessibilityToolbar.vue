@@ -236,7 +236,16 @@ export default {
       trapFocus
     } = useAccessibility()
 
-    const { isDark, toggleTheme } = useTheme()
+    const themeState = useTheme()
+    // Expose a stable computed ref to avoid "property was accessed during render but is not defined"
+    const isDarkLocal = computed(() => {
+      try {
+        return themeState.isDark?.value ?? false
+      } catch {
+        return false
+      }
+    })
+    const toggleTheme = themeState.toggleTheme
 
     const isExpanded = ref(false)
     const showingKeyboardHelp = ref(false)
@@ -366,6 +375,8 @@ export default {
       isHighContrast,
       fontSize,
       fontSizeLabel,
+      // return the local computed name to the template
+      isDark: isDarkLocal,
       toggleToolbar,
       closeToolbar,
       toggleHighContrast,
@@ -373,7 +384,8 @@ export default {
       decreaseFontSize,
       showKeyboardHelp,
       hideKeyboardHelp,
-      resetSettings
+      resetSettings,
+      toggleTheme
     }
   }
 }
