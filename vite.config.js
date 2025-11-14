@@ -20,6 +20,7 @@ const removeConsolePlugin = () => {
 }
 
 export default defineConfig({
+  base: '/sistema-inventario-maroto/',
   plugins: [
     vue(),
     removeConsolePlugin()
