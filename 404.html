@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+    <meta http-equiv="refresh" content="0; url=/sistema-inventario-maroto/" />
+    <script>
+      const base = '/sistema-inventario-maroto/';
+      const loc = window.location;
+      const redirectUrl = base + (loc.pathname.replace(/^.*sistema-inventario-maroto\//, '')) + loc.search + loc.hash;
+      window.location.replace(redirectUrl);
+    </script>
+  </head>
+  <body></body>
+  </html>
